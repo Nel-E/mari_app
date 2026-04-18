@@ -24,10 +24,15 @@ sealed interface SafGrant {
     data object Missing : SafGrant
 }
 
+interface SafSource {
+    val grant: StateFlow<SafGrant>
+    suspend fun init()
+}
+
 @Singleton
 class SafFolderManager @Inject constructor(
     @ApplicationContext private val context: Context,
-) {
+) : SafSource {
     private val _grant = MutableStateFlow<SafGrant>(SafGrant.Missing)
     val grant: StateFlow<SafGrant> = _grant.asStateFlow()
 
