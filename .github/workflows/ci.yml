@@ -33,7 +33,7 @@ jobs:
         run: ./gradlew detekt --stacktrace
 
       - name: :shared unit tests
-        run: ./gradlew :shared:test --stacktrace
+        run: ./gradlew :shared:testDebugUnitTest --stacktrace
 
       - name: :app lint
         run: ./gradlew :app:lintDebug --stacktrace
@@ -46,6 +46,15 @@ jobs:
 
       - name: :wear unit tests
         run: ./gradlew :wear:testDebugUnitTest --stacktrace
+
+      - name: :shared coverage check (≥80%)
+        run: ./gradlew :shared:jacocoCoverageVerification --stacktrace
+
+      - name: :app coverage check (≥80%)
+        run: ./gradlew :app:jacocoCoverageVerification --stacktrace
+
+      - name: :wear coverage check (≥80%)
+        run: ./gradlew :wear:jacocoCoverageVerification --stacktrace
 
       - name: Upload lint reports
         if: always()
@@ -65,3 +74,13 @@ jobs:
             shared/build/reports/tests/
             app/build/reports/tests/
             wear/build/reports/tests/
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            shared/build/reports/jacoco/
+            app/build/reports/jacoco/
+            wear/build/reports/jacoco/
