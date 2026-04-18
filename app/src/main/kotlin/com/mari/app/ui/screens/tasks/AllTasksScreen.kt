@@ -1,0 +1,116 @@
+package com.mari.app.ui.screens.tasks
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.mari.app.ui.components.EmptyState
+import com.mari.app.ui.components.TaskRow
+import com.mari.app.ui.dialogs.DeleteConfirmDialog
+import com.mari.app.ui.dialogs.ExecutingConflictDialog
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AllTasksScreen(
+    onNavigateUp: () -> Unit,
+    onNavigateToAdd: () -> Unit,
+    viewModel: AllTasksViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("All Tasks") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateUp) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    SortMenu(
+                        currentMode = uiState.filterState.sortMode,
+                        onSelect = viewModel::onSortModeChange,
+                    )
+                },
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onNavigateToAdd) {
+                Icon(Icons.Default.Add, contentDescription = "Add Task")
+            }
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            TaskSearchBar(
+                query = uiState.filterState.query,
+                onQueryChange = viewModel::onQueryChange,
+            )
+            FilterChipsRow(
+                selectedStatuses = uiState.filterState.selectedStatuses,
+                onToggle = viewModel::onStatusToggle,
+            )
+            if (uiState.tasks.isEmpty()) {
+                EmptyState(
+                    title = "No tasks",
+                    subtitle = "Add a task or adjust your filters",
+                )
+            } else {
+                LazyColumn {
+                    items(uiState.tasks, key = { it.id }) { task ->
+                        TaskRow(task = task, onClick = { viewModel.onTaskClick(task) })
+                    }
+                }
+            }
+        }
+    }
+
+    uiState.selectedTask?.let { task ->
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        EditTaskSheet(
+            task = task,
+            sheetState = sheetState,
+            onSave = { desc, status -> viewModel.onSaveEdit(task.id, desc, status) },
+            onDelete = { viewModel.onRequestDelete(task) },
+            onDismiss = viewModel::onDismissEdit,
+        )
+    }
+
+    uiState.pendingDeleteTask?.let { task ->
+        DeleteConfirmDialog(
+            taskDescription = task.description,
+            onConfirm = viewModel::onConfirmDelete,
+            onDismiss = viewModel::onDismissDelete,
+        )
+    }
+
+    uiState.executingConflict?.let { conflict ->
+        ExecutingConflictDialog(
+            executingDescription = conflict.existing.description,
+            onFinish = viewModel::onConflictFinish,
+            onPause = viewModel::onConflictPause,
+            onCancel = viewModel::onDismissConflict,
+        )
+    }
+}
