@@ -1,10 +1,7 @@
 package com.mari.app.ui.screens.tasks
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,7 +18,7 @@ fun SortMenu(
     var expanded by remember { mutableStateOf(false) }
 
     IconButton(onClick = { expanded = true }) {
-        Icon(Icons.Default.Sort, contentDescription = "Sort")
+        Text("Sort")
     }
     DropdownMenu(
         expanded = expanded,

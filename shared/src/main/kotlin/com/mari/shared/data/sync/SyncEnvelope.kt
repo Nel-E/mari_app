@@ -2,11 +2,13 @@ package com.mari.shared.data.sync
 
 import com.mari.shared.domain.InstantSerializer
 import com.mari.shared.domain.Task
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.Cbor
 import java.time.Instant
 
+@OptIn(ExperimentalSerializationApi::class)
 private val syncCbor = Cbor {
     ignoreUnknownKeys = true
 }
@@ -49,6 +51,7 @@ sealed interface SyncEnvelope {
         val conflicts: List<String>,
     ) : SyncEnvelope
 
+    @OptIn(ExperimentalSerializationApi::class)
     companion object {
         const val CURRENT_SCHEMA_VERSION = 1
 

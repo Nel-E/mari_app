@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -46,8 +47,8 @@ class MainViewModel @Inject constructor(
     private val clock: Clock,
     private val shakeEventSource: ShakeEventSource,
     private val shakeFeedback: ShakeFeedback,
-    private val conflictQueue: ConflictQueue,
-    private val syncClient: PhoneSyncClient,
+    private val conflictQueue: ConflictQueue? = null,
+    private val syncClient: PhoneSyncClient? = null,
 ) : ViewModel() {
 
     private val _showExecutingSheet = MutableStateFlow(false)
@@ -55,20 +56,40 @@ class MainViewModel @Inject constructor(
     private val _shakeConflict = MutableStateFlow<ShakeConflict?>(null)
     private val _dismissedSyncConflictId = MutableStateFlow<String?>(null)
 
+    private data class MainUiInputs(
+        val tasks: List<Task>,
+        val showExecutingSheet: Boolean,
+        val pickedTask: Task?,
+        val shakeConflict: ShakeConflict?,
+        val pendingConflicts: List<SyncConflict>,
+        val dismissedConflictId: String?,
+    )
+
     val uiState: StateFlow<MainUiState> = combine(
-        repository.observeTasks(),
-        _showExecutingSheet,
-        _pickedTask,
-        _shakeConflict,
-        conflictQueue.conflicts,
+        combine(
+            repository.observeTasks(),
+            _showExecutingSheet,
+            _pickedTask,
+            _shakeConflict,
+            conflictQueue?.conflicts ?: flowOf(emptyList()),
+        ) { tasks, showSheet, pickedTask, shakeConflict, pendingConflicts ->
+            MainUiInputs(
+                tasks = tasks,
+                showExecutingSheet = showSheet,
+                pickedTask = pickedTask,
+                shakeConflict = shakeConflict,
+                pendingConflicts = pendingConflicts,
+                dismissedConflictId = null,
+            )
+        },
         _dismissedSyncConflictId,
-    ) { tasks, showSheet, pickedTask, shakeConflict, pendingConflicts, dismissedConflictId ->
+    ) { inputs, dismissedConflictId ->
         MainUiState(
-            ctaState = resolveCtaState(tasks),
-            showExecutingSheet = showSheet,
-            pickedTask = pickedTask,
-            shakeConflict = shakeConflict,
-            pendingSyncConflict = pendingConflicts.firstOrNull { it.local.id != dismissedConflictId },
+            ctaState = resolveCtaState(inputs.tasks),
+            showExecutingSheet = inputs.showExecutingSheet,
+            pickedTask = inputs.pickedTask,
+            shakeConflict = inputs.shakeConflict,
+            pendingSyncConflict = inputs.pendingConflicts.firstOrNull { it.local.id != dismissedConflictId },
         )
     }.stateIn(
         scope = viewModelScope,
@@ -195,8 +216,8 @@ class MainViewModel @Inject constructor(
         val conflict = uiState.value.pendingSyncConflict ?: return
         viewModelScope.launch {
             _dismissedSyncConflictId.value = null
-            conflictQueue.remove(conflict.local.id)
-            syncClient.sendTasks(listOf(conflict.local))
+            conflictQueue?.remove(conflict.local.id)
+            syncClient?.sendTasks(listOf(conflict.local))
         }
     }
 
@@ -209,7 +230,7 @@ class MainViewModel @Inject constructor(
                 merged[conflict.incoming.id] = conflict.incoming
                 merged.values.toList()
             }
-            conflictQueue.remove(conflict.local.id)
+            conflictQueue?.remove(conflict.local.id)
         }
     }
 
@@ -227,7 +248,7 @@ class MainViewModel @Inject constructor(
                     lastModifiedBy = DeviceId.PHONE,
                 )
             }
-            conflictQueue.remove(conflict.local.id)
+            conflictQueue?.remove(conflict.local.id)
         }
     }
 

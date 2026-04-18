@@ -1,5 +1,6 @@
 package com.mari.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -23,7 +24,14 @@ fun StatusChip(
     status: TaskStatus,
     modifier: Modifier = Modifier,
 ) {
-    val (label, color) = status.labelAndColor()
+    val (label, color) = when (status) {
+        TaskStatus.TO_BE_DONE -> "To Do" to ColorStatusToBeDone
+        TaskStatus.PAUSED -> "Paused" to ColorStatusPaused
+        TaskStatus.EXECUTING -> "Executing" to ColorStatusExecuting
+        TaskStatus.QUEUED -> "Queued" to ColorStatusQueued
+        TaskStatus.COMPLETED -> "Completed" to ColorStatusCompleted
+        TaskStatus.DISCARDED -> "Discarded" to ColorStatusDiscarded
+    }
     AssistChip(
         onClick = {},
         label = { Text(text = label) },
@@ -34,17 +42,6 @@ fun StatusChip(
             containerColor = color.copy(alpha = 0.15f),
             labelColor = color,
         ),
-        border = AssistChipDefaults.assistChipBorder(
-            borderColor = color.copy(alpha = 0.4f),
-        ),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.4f)),
     )
-}
-
-private fun TaskStatus.labelAndColor(): Pair<String, Color> = when (this) {
-    TaskStatus.TO_BE_DONE -> "To Do" to ColorStatusToBeDone
-    TaskStatus.PAUSED -> "Paused" to ColorStatusPaused
-    TaskStatus.EXECUTING -> "Executing" to ColorStatusExecuting
-    TaskStatus.QUEUED -> "Queued" to ColorStatusQueued
-    TaskStatus.COMPLETED -> "Completed" to ColorStatusCompleted
-    TaskStatus.DISCARDED -> "Discarded" to ColorStatusDiscarded
 }

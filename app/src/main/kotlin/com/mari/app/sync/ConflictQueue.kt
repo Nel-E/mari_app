@@ -12,6 +12,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -58,7 +59,8 @@ class ConflictQueue @Inject constructor(
             if (items.isEmpty()) {
                 prefs.remove(KEY_PENDING_CONFLICTS)
             } else {
-                prefs[KEY_PENDING_CONFLICTS] = Json.encodeToString(items)
+                prefs[KEY_PENDING_CONFLICTS] =
+                    Json.encodeToString(ListSerializer(StoredConflict.serializer()), items)
             }
         }
     }
