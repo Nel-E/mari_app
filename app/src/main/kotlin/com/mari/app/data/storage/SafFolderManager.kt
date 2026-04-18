@@ -34,9 +34,9 @@ class SafFolderManager @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : SafSource {
     private val _grant = MutableStateFlow<SafGrant>(SafGrant.Missing)
-    val grant: StateFlow<SafGrant> = _grant.asStateFlow()
+    override val grant: StateFlow<SafGrant> = _grant.asStateFlow()
 
-    suspend fun init() {
+    override suspend fun init() {
         val stored = context.safPrefs.data.map { it[KEY_TREE_URI] }.first()
         if (stored != null) {
             val uri = Uri.parse(stored)
