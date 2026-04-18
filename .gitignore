@@ -11,6 +11,11 @@ local.properties
 *.jks
 google-services.json
 
+# Build outputs
+*.apk
+*.aab
+*.ap_
+
 # IntelliJ / Android Studio
 .idea/
 *.iml
@@ -18,9 +23,18 @@ google-services.json
 *.ipr
 out/
 .DS_Store
+captures/
+.navigation/
+*.hprof
 
 # Kotlin
 *.class
+.kotlin/
+
+# Coverage / test reports
+*.exec
+lint-results*
+lint-report*
 
 # Generated
 gen/
@@ -30,3 +44,7 @@ generated/
 .env
 .env.*
 secrets/
+
+# OS
+Thumbs.db
+*.orig
