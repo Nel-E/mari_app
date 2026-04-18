@@ -8,15 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -51,19 +44,13 @@ fun MainScreen(
             TopAppBar(
                 title = { Text("Mari") },
                 actions = {
-                    IconButton(onClick = onNavigateToTasks) {
-                        Icon(Icons.Default.List, contentDescription = "All Tasks")
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
+                    AllTasksIconButton(onClick = onNavigateToTasks)
+                    SettingsIconButton(onClick = onNavigateToSettings)
                 },
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToAdd) {
-                Icon(Icons.Default.Add, contentDescription = "Add Task")
-            }
+            AddTaskFab(onClick = onNavigateToAdd)
         },
     ) { padding ->
         Column(

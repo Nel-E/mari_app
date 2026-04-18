@@ -66,14 +66,14 @@ class AtomicWriter @Inject constructor(
             if (!content.isNullOrBlank()) return@runCatching content
         }
 
-        // Fall back to .bak
+        // Fall back to .bak — return its content so callers receive recovered data
         val bak = dir.findFile(FILE_BAK)
         if (bak != null) {
             val content = context.contentResolver.openInputStream(bak.uri)?.use {
                 it.readBytes().toString(Charsets.UTF_8)
             }
             if (!content.isNullOrBlank()) {
-                throw StorageError.Corrupt(recovered = true)
+                return@runCatching content
             }
         }
 

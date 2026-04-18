@@ -3,6 +3,10 @@ package com.mari.wear
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.wear.compose.material.Scaffold
+import androidx.wear.compose.material.TimeText
+import androidx.wear.compose.material.Vignette
+import androidx.wear.compose.material.VignettePosition
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import com.mari.wear.shake.ShakeLifecycleObserver
 import com.mari.wear.ui.nav.WearNavGraph
@@ -20,8 +24,13 @@ class MainActivity : ComponentActivity() {
         lifecycle.addObserver(shakeLifecycleObserver)
         setContent {
             WearMariTheme {
-                val navController = rememberSwipeDismissableNavController()
-                WearNavGraph(navController)
+                Scaffold(
+                    timeText = { TimeText() },
+                    vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },
+                ) { _ ->
+                    val navController = rememberSwipeDismissableNavController()
+                    WearNavGraph(navController)
+                }
             }
         }
     }

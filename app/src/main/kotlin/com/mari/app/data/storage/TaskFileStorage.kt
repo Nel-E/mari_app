@@ -6,11 +6,18 @@ import com.mari.shared.data.serialization.TaskFileCodec
 import com.mari.shared.domain.DeviceId
 import javax.inject.Inject
 
+interface TaskStorage {
+    fun load(treeUri: Uri): Result<TaskFile>
+    fun save(treeUri: Uri, file: TaskFile): Result<Unit>
+    fun exists(treeUri: Uri): Boolean
+    fun initialFile(deviceId: DeviceId): TaskFile
+}
+
 class TaskFileStorage @Inject constructor(
     private val writer: AtomicWriter,
     private val rotator: WeeklyBackupRotator,
-) {
-    fun load(treeUri: Uri): Result<TaskFile> =
+) : TaskStorage {
+    override fun load(treeUri: Uri): Result<TaskFile> =
         writer.read(treeUri).fold(
             onSuccess = { raw ->
                 TaskFileCodec.decode(raw).mapError { cause ->
@@ -28,7 +35,7 @@ class TaskFileStorage @Inject constructor(
             },
         )
 
-    fun save(treeUri: Uri, file: TaskFile): Result<Unit> {
+    override fun save(treeUri: Uri, file: TaskFile): Result<Unit> {
         val encoded = TaskFileCodec.encode(file)
         return writer.write(treeUri, encoded).also {
             if (it.isSuccess) {
@@ -37,9 +44,9 @@ class TaskFileStorage @Inject constructor(
         }
     }
 
-    fun exists(treeUri: Uri): Boolean = writer.exists(treeUri)
+    override fun exists(treeUri: Uri): Boolean = writer.exists(treeUri)
 
-    fun initialFile(deviceId: DeviceId): TaskFile =
+    override fun initialFile(deviceId: DeviceId): TaskFile =
         TaskFile(tasks = emptyList(), settings = com.mari.shared.data.serialization.FileSettings(deviceId.name.lowercase()))
 }
 

@@ -1,11 +1,13 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
+    jacoco
 }
 
 android {
@@ -119,6 +121,8 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.compose.ui.test.manifest)
 
     // Android / instrumented tests
     androidTestImplementation(libs.junit4)
@@ -133,4 +137,50 @@ dependencies {
 detekt {
     config.setFrom(rootProject.files("config/detekt/detekt.yml"))
     buildUponDefaultConfig = true
+}
+
+private val jacocoExcludes = listOf(
+    "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*",
+    "**/*_Factory.*", "**/*_HiltComponents.*", "**/*_MembersInjector.*",
+    "**/Hilt_*.*", "**/*Module_*.*",
+    "**/ui/**",
+)
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+    sourceDirectories.setFrom(files("src/main/kotlin"))
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+            exclude(jacocoExcludes)
+        },
+    )
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) { include("jacoco/testDebugUnitTest.exec") },
+    )
+}
+
+tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
+    dependsOn("jacocoTestReport")
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+    sourceDirectories.setFrom(files("src/main/kotlin"))
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+            exclude(jacocoExcludes)
+        },
+    )
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) { include("jacoco/testDebugUnitTest.exec") },
+    )
 }
