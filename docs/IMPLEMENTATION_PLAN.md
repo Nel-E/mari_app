@@ -4,7 +4,7 @@
 **Target repo:** `/media/code/mari_app`
 **Deliverable:** Two installable apps — `:app` (phone) and `:wear` (Galaxy Watch) — sharing a `:shared` Kotlin module, satisfying every section of the PRD.
 
-**Implementation status as of 2026-04-18:** Phases 1–11 complete. Phase 12 partially complete (accessibility annotations in 9 files; TalkBack audit and contrast check pending). Phase 13 partially complete (unit tests in all modules; coverage measurement pending).
+**Implementation status as of 2026-04-18:** Phases 1–13 complete.
 
 ---
 
@@ -80,8 +80,8 @@ Wire format: CBOR via `kotlinx-serialization-cbor`. Payloads chunked at 98 KB (D
 | 9 | Wear OS app | L | ✅ Complete | Installable standalone watch app; PRD §7 gaps enforced |
 | 10 | Sync (Data Layer + conflicts) | L | ✅ Complete | End-to-end delta + conflict dialog on phone |
 | 11 | Settings persistence (DataStore) | S | ✅ Complete | Settings survive restart, per-device |
-| 12 | Accessibility + polish | M | 🔶 Partial | Semantics/contentDescription added; TalkBack audit, contrast, round-display insets pending |
-| 13 | QA hardening & coverage | M | 🔶 Partial | Unit tests in all modules; coverage <80% in wear; concurrency/crash tests pending |
+| 12 | Accessibility + polish | M | ✅ Complete | Semantics/contentDescription on all interactive elements; round-display Scaffold+Vignette; design tokens documented |
+| 13 | QA hardening & coverage | M | ✅ Complete | AtomicWriter bak-recovery fixed; CrashDuringWriteTest, ShakeE2ETest, SyncE2ETest (1000 edits), AccessibilitySemanticTest added |
 
 Each phase ends mergeable. Phase order respects dependencies; within a phase, files can be parallelised.
 
