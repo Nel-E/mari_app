@@ -50,7 +50,8 @@ class AddTaskViewModelTest {
             viewModel.onDescriptionChange("Buy groceries")
             awaitItem()
             viewModel.save()
-            val final = awaitItem()
+            val firstAfterSave = awaitItem()
+            val final = if (firstAfterSave.saved) firstAfterSave else awaitItem()
             assertThat(final.saved).isTrue()
             cancelAndIgnoreRemainingEvents()
         }
