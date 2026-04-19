@@ -1,7 +1,5 @@
 package com.mari.wear.ui.screens.add
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -9,21 +7,29 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
-import androidx.wear.input.RemoteInputIntentHelper
-
-private const val KEY_DESCRIPTION = "description"
 
 @Composable
 fun AddTaskScreen(
@@ -31,28 +37,9 @@ fun AddTaskScreen(
     viewModel: AddTaskViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val focusRequester = remember { FocusRequester() }
 
-    val inputLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        val bundle = android.app.RemoteInput.getResultsFromIntent(result.data ?: return@rememberLauncherForActivityResult)
-        val text = bundle?.getCharSequence(KEY_DESCRIPTION)?.toString()
-        if (!text.isNullOrBlank()) {
-            viewModel.onDescriptionChange(text)
-            viewModel.save()
-        }
-    }
-
-    fun launchInput() {
-        val remoteInput = android.app.RemoteInput.Builder(KEY_DESCRIPTION)
-            .setLabel("Describe the task")
-            .build()
-        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
-        RemoteInputIntentHelper.putRemoteInputsExtra(intent, listOf(remoteInput))
-        inputLauncher.launch(intent)
-    }
-
-    LaunchedEffect(Unit) { launchInput() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
     LaunchedEffect(uiState.saved) {
         if (uiState.saved) navController.popBackStack()
@@ -66,22 +53,46 @@ fun AddTaskScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         when {
-            uiState.descriptionError != null -> {
-                Text(
-                    text = uiState.descriptionError!!,
-                    textAlign = TextAlign.Center,
+            uiState.isSaving -> Text("Saving…")
+            else -> {
+                BasicTextField(
+                    value = uiState.description,
+                    onValueChange = viewModel::onDescriptionChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
+                    textStyle = TextStyle(
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center,
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { viewModel.save() }),
+                    singleLine = false,
+                    decorationBox = { inner ->
+                        if (uiState.description.isEmpty()) {
+                            Text(
+                                text = uiState.descriptionError ?: "Type a task…",
+                                color = if (uiState.descriptionError != null)
+                                    MaterialTheme.colors.error
+                                else
+                                    Color.Gray,
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                        inner()
+                    },
                 )
                 Spacer(Modifier.height(8.dp))
                 Button(
-                    onClick = ::launchInput,
+                    onClick = viewModel::save,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Try Again")
+                    Text("Save")
                 }
             }
-            uiState.isSaving -> Text("Saving…")
-            uiState.description.isNotEmpty() -> Text("Saving…")
-            else -> Text("Opening keyboard…")
         }
     }
 }
+

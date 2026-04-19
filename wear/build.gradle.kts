@@ -65,7 +65,6 @@ dependencies {
 
     // Wear Compose — do NOT mix with phone Material3 or phone navigation-compose
     implementation(libs.wear.compose.material)
-    implementation(libs.wear.input)
     implementation(libs.wear.compose.foundation)
     implementation(libs.wear.compose.navigation)
 
