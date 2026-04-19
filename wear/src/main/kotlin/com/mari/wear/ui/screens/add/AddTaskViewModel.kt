@@ -17,8 +17,9 @@ import javax.inject.Inject
 
 data class WearAddTaskUiState(
     val description: String = "",
+    val descriptionError: String? = null,
+    val isSaving: Boolean = false,
     val saved: Boolean = false,
-    val voiceError: String? = null,
 )
 
 @HiltViewModel
@@ -30,34 +31,31 @@ class AddTaskViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(WearAddTaskUiState())
     val uiState: StateFlow<WearAddTaskUiState> = _uiState.asStateFlow()
 
-    fun onVoiceResult(text: String) {
-        _uiState.update { it.copy(description = text, voiceError = null) }
-        save(text)
+    fun onDescriptionChange(text: String) {
+        _uiState.update { it.copy(description = text, descriptionError = null) }
     }
 
-    fun onVoiceEmpty() {
-        _uiState.update { it.copy(voiceError = "No speech detected. Try again.") }
-    }
-
-    fun onVoiceCancelled() {
-        _uiState.update { it.copy(voiceError = null) }
-    }
-
-    fun clearError() {
-        _uiState.update { it.copy(voiceError = null) }
-    }
-
-    private fun save(description: String) {
-        val validation = TaskValidation.validateDescription(description)
+    fun save() {
+        val raw = _uiState.value.description
+        val validation = TaskValidation.validateDescription(raw)
         if (validation.isFailure) {
-            _uiState.update { it.copy(voiceError = validation.exceptionOrNull()?.message ?: "Invalid input") }
+            _uiState.update {
+                it.copy(descriptionError = validation.exceptionOrNull()?.message ?: "Invalid input")
+            }
             return
         }
+        val description = validation.getOrThrow()
+        _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
-            repository.update { tasks ->
+            val result = repository.update { tasks ->
                 tasks + ExecutionRules.createTask(description, clock, DeviceId.WATCH)
             }
-            _uiState.update { it.copy(saved = true) }
+            if (result.isSuccess) {
+                _uiState.update { it.copy(isSaving = false, saved = true) }
+            } else {
+                val msg = result.exceptionOrNull()?.message ?: "Failed to save task"
+                _uiState.update { it.copy(isSaving = false, descriptionError = msg) }
+            }
         }
     }
 }

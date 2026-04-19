@@ -1,26 +1,29 @@
 package com.mari.wear.ui.screens.add
 
-import android.app.Activity
-import android.content.Intent
-import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.Text
+import androidx.wear.input.RemoteInputIntentHelper
+
+private const val KEY_DESCRIPTION = "description"
 
 @Composable
 fun AddTaskScreen(
@@ -29,50 +32,56 @@ fun AddTaskScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val voiceLauncher = rememberLauncherForActivityResult(
+    val inputLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
     ) { result ->
-        val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-        val text = matches?.firstOrNull()
-        when {
-            text != null -> viewModel.onVoiceResult(text)
-            result.resultCode == Activity.RESULT_CANCELED -> viewModel.onVoiceCancelled()
-            else -> viewModel.onVoiceEmpty()
+        val bundle = android.app.RemoteInput.getResultsFromIntent(result.data ?: return@rememberLauncherForActivityResult)
+        val text = bundle?.getCharSequence(KEY_DESCRIPTION)?.toString()
+        if (!text.isNullOrBlank()) {
+            viewModel.onDescriptionChange(text)
+            viewModel.save()
         }
     }
 
-    fun launchVoice() {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Describe the task")
-        }
-        voiceLauncher.launch(intent)
+    fun launchInput() {
+        val remoteInput = android.app.RemoteInput.Builder(KEY_DESCRIPTION)
+            .setLabel("Describe the task")
+            .build()
+        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+        RemoteInputIntentHelper.putRemoteInputsExtra(intent, listOf(remoteInput))
+        inputLauncher.launch(intent)
     }
 
-    LaunchedEffect(Unit) { launchVoice() }
+    LaunchedEffect(Unit) { launchInput() }
 
-    if (uiState.saved) {
-        LaunchedEffect(Unit) { navController.popBackStack() }
+    LaunchedEffect(uiState.saved) {
+        if (uiState.saved) navController.popBackStack()
     }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         when {
-            uiState.voiceError != null -> {
-                Text(uiState.voiceError!!)
+            uiState.descriptionError != null -> {
+                Text(
+                    text = uiState.descriptionError!!,
+                    textAlign = TextAlign.Center,
+                )
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = {
-                    viewModel.clearError()
-                    launchVoice()
-                }) {
+                Button(
+                    onClick = ::launchInput,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text("Try Again")
                 }
             }
+            uiState.isSaving -> Text("Saving…")
             uiState.description.isNotEmpty() -> Text("Saving…")
-            else -> Text("Listening…")
+            else -> Text("Opening keyboard…")
         }
     }
 }
