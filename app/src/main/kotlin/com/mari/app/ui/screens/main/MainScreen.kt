@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -163,6 +165,20 @@ fun MainScreen(
             onKeepWatch = viewModel::keepWatchConflict,
             onKeepBoth = viewModel::keepBothConflict,
             onCancel = viewModel::cancelSyncConflict,
+        )
+    }
+
+    if (uiState.needsFolderSetup) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Storage Folder Required") },
+            text = { Text("Mari needs a folder to store your tasks. Please set one in Settings before continuing.") },
+            confirmButton = {
+                Button(onClick = onNavigateToSettings) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {},
         )
     }
 }

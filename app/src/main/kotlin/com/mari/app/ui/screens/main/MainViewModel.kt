@@ -2,6 +2,8 @@ package com.mari.app.ui.screens.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mari.app.data.storage.SafGrant
+import com.mari.app.data.storage.SafSource
 import com.mari.app.shake.ShakeEventSource
 import com.mari.app.shake.ShakeFeedback
 import com.mari.app.sync.ConflictQueue
@@ -39,6 +41,7 @@ data class MainUiState(
     val pickedTask: Task? = null,
     val shakeConflict: ShakeConflict? = null,
     val pendingSyncConflict: SyncConflict? = null,
+    val needsFolderSetup: Boolean = false,
 )
 
 @HiltViewModel
@@ -47,6 +50,7 @@ class MainViewModel @Inject constructor(
     private val clock: Clock,
     private val shakeEventSource: ShakeEventSource,
     private val shakeFeedback: ShakeFeedback,
+    private val safSource: SafSource,
     private val conflictQueue: ConflictQueue? = null,
     private val syncClient: PhoneSyncClient? = null,
 ) : ViewModel() {
@@ -62,7 +66,6 @@ class MainViewModel @Inject constructor(
         val pickedTask: Task?,
         val shakeConflict: ShakeConflict?,
         val pendingConflicts: List<SyncConflict>,
-        val dismissedConflictId: String?,
     )
 
     val uiState: StateFlow<MainUiState> = combine(
@@ -79,17 +82,18 @@ class MainViewModel @Inject constructor(
                 pickedTask = pickedTask,
                 shakeConflict = shakeConflict,
                 pendingConflicts = pendingConflicts,
-                dismissedConflictId = null,
             )
         },
         _dismissedSyncConflictId,
-    ) { inputs, dismissedConflictId ->
+        safSource.grant,
+    ) { inputs, dismissedConflictId, grant ->
         MainUiState(
             ctaState = resolveCtaState(inputs.tasks),
             showExecutingSheet = inputs.showExecutingSheet,
             pickedTask = inputs.pickedTask,
             shakeConflict = inputs.shakeConflict,
             pendingSyncConflict = inputs.pendingConflicts.firstOrNull { it.local.id != dismissedConflictId },
+            needsFolderSetup = grant is SafGrant.Missing,
         )
     }.stateIn(
         scope = viewModelScope,
