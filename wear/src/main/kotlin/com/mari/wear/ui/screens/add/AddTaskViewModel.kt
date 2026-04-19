@@ -48,9 +48,9 @@ class AddTaskViewModel @Inject constructor(
     }
 
     private fun save(description: String) {
-        val error = TaskValidation.validateDescription(description)
-        if (error != null) {
-            _uiState.update { it.copy(voiceError = error) }
+        val validation = TaskValidation.validateDescription(description)
+        if (validation.isFailure) {
+            _uiState.update { it.copy(voiceError = validation.exceptionOrNull()?.message ?: "Invalid input") }
             return
         }
         viewModelScope.launch {

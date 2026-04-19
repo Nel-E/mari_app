@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     timeText = { TimeText() },
                     vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },
-                ) { _ ->
+                ) {
                     val navController = rememberSwipeDismissableNavController()
                     WearNavGraph(navController)
                 }

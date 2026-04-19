@@ -8,6 +8,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
 private val Context.watchSyncDataStore by preferencesDataStore(name = "watch_sync_state")
@@ -28,7 +30,9 @@ class WatchSyncStateStore @Inject constructor(
             val existing = current[id]
             if (existing == null || version >= existing) current[id] = version
         }
-        context.watchSyncDataStore.edit { it[KEY_SYNC_VERSIONS] = Json.encodeToString(current) }
+        context.watchSyncDataStore.edit {
+            it[KEY_SYNC_VERSIONS] = Json.encodeToString(MapSerializer(String.serializer(), Int.serializer()), current)
+        }
     }
 
     private companion object {

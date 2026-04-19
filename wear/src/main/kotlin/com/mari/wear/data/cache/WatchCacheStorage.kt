@@ -16,20 +16,20 @@ class WatchCacheStorage @Inject constructor(
     private val file = File(context.filesDir, CACHE_FILE_NAME)
     private val tempFile = File(context.filesDir, "$CACHE_FILE_NAME.tmp")
 
-    fun exists(): Boolean = file.exists()
+    override fun exists(): Boolean = file.exists()
 
-    fun load(): Result<TaskFile> = runCatching {
+    override fun load(): Result<TaskFile> = runCatching {
         TaskFileCodec.decode(file.readText()).getOrThrow()
     }
 
-    fun save(taskFile: TaskFile): Result<Unit> = runCatching {
+    override fun save(taskFile: TaskFile): Result<Unit> = runCatching {
         tempFile.writeText(TaskFileCodec.encode(taskFile))
         if (!tempFile.renameTo(file)) {
             file.writeText(TaskFileCodec.encode(taskFile))
         }
     }
 
-    fun initialFile(): TaskFile = TaskFile(
+    override fun initialFile(): TaskFile = TaskFile(
         tasks = emptyList(),
         settings = FileSettings(deviceId = "watch"),
     )

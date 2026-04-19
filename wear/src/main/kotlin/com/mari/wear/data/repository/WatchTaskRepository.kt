@@ -46,7 +46,7 @@ class WatchTaskRepository @Inject constructor(
             val seeded = Seeding.ensureSeedTask(initial.tasks, SystemClock, DeviceId.WATCH)
             storage.save(initial.copy(tasks = seeded))
             _tasks.value = seeded
-            return
+            return@withLock
         }
         storage.load().onSuccess { file ->
             val seeded = Seeding.ensureSeedTask(file.tasks, SystemClock, DeviceId.WATCH)
