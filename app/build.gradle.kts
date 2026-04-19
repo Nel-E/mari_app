@@ -21,6 +21,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
+        buildConfigField("String", "BUILD_TIME", "\"${java.time.Instant.now()}\"")
 
         testInstrumentationRunner = "com.mari.app.HiltTestRunner"
     }
@@ -43,6 +44,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {

@@ -31,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mari.app.BuildConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,6 +149,21 @@ fun SettingsScreen(
                 headlineContent = { Text("Backup Info") },
                 supportingContent = {
                     Text("Last: ${uiState.backupInfo.lastBackupLabel}\nNext: ${uiState.backupInfo.nextBackupLabel}")
+                },
+            )
+            HorizontalDivider()
+            SectionTitle("About")
+            ListItem(
+                headlineContent = { Text("Version") },
+                trailingContent = { Text(BuildConfig.VERSION_NAME) },
+            )
+            ListItem(
+                headlineContent = { Text("Build time") },
+                trailingContent = {
+                    Text(
+                        text = BuildConfig.BUILD_TIME,
+                        textAlign = TextAlign.End,
+                    )
                 },
             )
         }
