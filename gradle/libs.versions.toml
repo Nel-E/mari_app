@@ -4,6 +4,7 @@ kotlin = "2.0.21"
 ksp = "2.0.21-1.0.28"
 compose-bom = "2024.12.01"
 wear-compose = "1.4.0"
+wear-input = "1.1.0"
 hilt = "2.52"
 kotlinx-serialization = "1.7.3"
 kotlinx-serialization-cbor = "1.7.3"
@@ -18,7 +19,7 @@ turbine = "1.2.0"
 detekt = "1.23.7"
 ktlint-gradle = "12.1.2"
 play-services-wearable = "19.0.0"
-work-runtime = "2.10.0"
+work-runtime = "2.9.1"
 robolectric = "4.14.1"
 desugar-jdk-libs = "2.1.4"
 documentfile = "1.0.1"
@@ -39,6 +40,7 @@ compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-mani
 wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wear-compose" }
 wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wear-compose" }
 wear-compose-navigation = { group = "androidx.wear.compose", name = "compose-navigation", version.ref = "wear-navigation" }
+wear-input = { group = "androidx.wear", name = "wear-input", version.ref = "wear-input" }
 
 # Navigation
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
@@ -60,6 +62,7 @@ kotlinx-serialization-cbor = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinx-coroutines" }
 
 # DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }

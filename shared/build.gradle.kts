@@ -10,7 +10,8 @@ plugins {
 
 android {
     namespace = "com.mari.shared"
-    compileSdk = 35
+    compileSdk = 34
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         minSdk = 26

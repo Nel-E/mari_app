@@ -12,12 +12,13 @@ plugins {
 
 android {
     namespace = "com.mari.app"
-    compileSdk = 35
+    compileSdk = 34
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         applicationId = "com.mari.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
 
@@ -111,6 +112,7 @@ dependencies {
 
     // Wearable data layer
     implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // Shared module
     implementation(project(":shared"))
@@ -132,6 +134,18 @@ dependencies {
     androidTestImplementation(libs.hilt.android.testing)
     kspAndroidTest(libs.hilt.android.compiler)
     androidTestImplementation(libs.compose.ui.test.junit4)
+}
+
+// Bundle the wear debug APK into phone assets so MariApp can dispatch it to the watch on startup.
+val copyWearApkToAssets by tasks.registering(Copy::class) {
+    dependsOn(":wear:assembleDebug")
+    from(project(":wear").layout.buildDirectory.file("outputs/apk/debug/wear-debug.apk"))
+    into(layout.projectDirectory.dir("src/main/assets"))
+    rename { "wear-debug.apk" }
+}
+
+afterEvaluate {
+    tasks.named("mergeDebugAssets") { dependsOn(copyWearApkToAssets) }
 }
 
 detekt {
