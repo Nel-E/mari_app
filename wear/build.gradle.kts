@@ -12,12 +12,13 @@ plugins {
 
 android {
     namespace = "com.mari.wear"
-    compileSdk = 35
+    compileSdk = 34
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
-        applicationId = "com.mari.wear"
+        applicationId = "com.mari.app"
         minSdk = 30
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
 
@@ -64,6 +65,7 @@ dependencies {
 
     // Wear Compose — do NOT mix with phone Material3 or phone navigation-compose
     implementation(libs.wear.compose.material)
+    implementation(libs.wear.input)
     implementation(libs.wear.compose.foundation)
     implementation(libs.wear.compose.navigation)
 
