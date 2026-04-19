@@ -1,5 +1,7 @@
 package com.mari.wear.di
 
+import android.content.Context
+import android.hardware.SensorManager
 import com.mari.shared.data.repository.TaskRepository
 import com.mari.shared.domain.Clock
 import com.mari.shared.domain.SystemClock
@@ -10,6 +12,7 @@ import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -29,5 +32,10 @@ abstract class WatchModule {
         @Provides
         @Singleton
         fun provideClock(): Clock = SystemClock
+
+        @Provides
+        @Singleton
+        fun provideSensorManager(@ApplicationContext context: Context): SensorManager =
+            context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     }
 }
