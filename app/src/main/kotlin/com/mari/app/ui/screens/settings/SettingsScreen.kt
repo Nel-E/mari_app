@@ -27,6 +27,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -35,6 +36,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mari.app.BuildConfig
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,8 +164,12 @@ fun SettingsScreen(
             ListItem(
                 headlineContent = { Text("Build time") },
                 trailingContent = {
+                    val formatted = remember {
+                        SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                            .format(Date(BuildConfig.BUILD_TIME_MS))
+                    }
                     Text(
-                        text = BuildConfig.BUILD_TIME,
+                        text = formatted,
                         textAlign = TextAlign.End,
                     )
                 },
