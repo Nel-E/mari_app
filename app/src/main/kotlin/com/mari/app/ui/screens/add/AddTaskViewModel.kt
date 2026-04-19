@@ -2,7 +2,6 @@ package com.mari.app.ui.screens.add
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mari.app.voice.VoiceResult
 import com.mari.shared.data.repository.TaskRepository
 import com.mari.shared.domain.Clock
 import com.mari.shared.domain.DeviceId
@@ -16,14 +15,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class VoiceRetryState(val message: String)
-
 data class AddTaskUiState(
     val description: String = "",
     val descriptionError: String? = null,
     val isSaving: Boolean = false,
     val saved: Boolean = false,
-    val voiceRetry: VoiceRetryState? = null,
 )
 
 @HiltViewModel
@@ -39,27 +35,6 @@ class AddTaskViewModel @Inject constructor(
         _uiState.update { it.copy(description = text, descriptionError = null) }
     }
 
-    fun onVoiceResult(result: VoiceResult) {
-        when (result) {
-            is VoiceResult.Success -> _uiState.update {
-                it.copy(description = result.text, voiceRetry = null)
-            }
-            is VoiceResult.Empty -> _uiState.update {
-                it.copy(voiceRetry = VoiceRetryState("No speech detected. Try again?"))
-            }
-            is VoiceResult.Cancelled -> _uiState.update {
-                it.copy(voiceRetry = VoiceRetryState("Voice input was cancelled. Try again?"))
-            }
-            is VoiceResult.Error -> _uiState.update {
-                it.copy(voiceRetry = VoiceRetryState(result.reason))
-            }
-        }
-    }
-
-    fun onDismissVoiceRetry() {
-        _uiState.update { it.copy(voiceRetry = null) }
-    }
-
     fun save() {
         val raw = _uiState.value.description
         val validated = TaskValidation.validateDescription(raw)
@@ -72,14 +47,19 @@ class AddTaskViewModel @Inject constructor(
         val description = validated.getOrThrow()
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
-            repository.update { tasks ->
+            val result = repository.update { tasks ->
                 tasks + ExecutionRules.createTask(
                     description = description,
                     clock = clock,
                     deviceId = DeviceId.PHONE,
                 )
             }
-            _uiState.update { it.copy(isSaving = false, saved = true) }
+            if (result.isSuccess) {
+                _uiState.update { it.copy(isSaving = false, saved = true) }
+            } else {
+                val msg = result.exceptionOrNull()?.message ?: "Failed to save task"
+                _uiState.update { it.copy(isSaving = false, descriptionError = msg) }
+            }
         }
     }
 }

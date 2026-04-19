@@ -1,6 +1,5 @@
 package com.mari.app.ui.screens.add
 
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,8 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.mari.app.permissions.RequestRecordAudioPermission
-import com.mari.app.voice.VoiceCaptureContract
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,19 +31,6 @@ fun AddTaskScreen(
     viewModel: AddTaskViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    val voiceLauncher = rememberLauncherForActivityResult(VoiceCaptureContract()) { result ->
-        viewModel.onVoiceResult(result)
-    }
-
-    RequestRecordAudioPermission(
-        onGranted = { voiceLauncher.launch(Unit) },
-        onDenied = {
-            viewModel.onVoiceResult(
-                com.mari.app.voice.VoiceResult.Error("Microphone permission is required for voice input.")
-            )
-        },
-    )
 
     LaunchedEffect(uiState.saved) {
         if (uiState.saved) onNavigateUp()
@@ -89,19 +73,5 @@ fun AddTaskScreen(
                 Text(if (uiState.isSaving) "Saving…" else "Save Task")
             }
         }
-    }
-
-    uiState.voiceRetry?.let { retry ->
-        RetryCancelDialog(
-            message = retry.message,
-            onRetry = {
-                viewModel.onDismissVoiceRetry()
-                voiceLauncher.launch(Unit)
-            },
-            onCancel = {
-                viewModel.onDismissVoiceRetry()
-                onNavigateUp()
-            },
-        )
     }
 }
