@@ -7,6 +7,7 @@ import com.mari.app.data.repository.FileTaskRepository
 import com.mari.app.di.ApplicationScope
 import com.mari.app.reminders.ExecutingStatusObserver
 import com.mari.app.sync.PhoneSyncClient
+import com.mari.app.wearinstall.WearApkDispatcher
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -28,6 +29,9 @@ class MariApp : Application(), Configuration.Provider {
     lateinit var syncClient: PhoneSyncClient
 
     @Inject
+    lateinit var wearApkDispatcher: WearApkDispatcher
+
+    @Inject
     @field:ApplicationScope
     lateinit var appScope: CoroutineScope
 
@@ -41,5 +45,6 @@ class MariApp : Application(), Configuration.Provider {
         appScope.launch { taskRepository.init() }
         executingStatusObserver.start()
         syncClient.start()
+        appScope.launch { wearApkDispatcher.dispatchIfAvailable() }
     }
 }

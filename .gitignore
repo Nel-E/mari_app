@@ -48,3 +48,4 @@ secrets/
 # OS
 Thumbs.db
 *.orig
+app/src/main/assets/wear-debug.apk
