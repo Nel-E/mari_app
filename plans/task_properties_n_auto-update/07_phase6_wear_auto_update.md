@@ -17,6 +17,7 @@ User requirement: "It must also automatically update the watch app as well."
 - `app/src/main/kotlin/com/mari/app/appupdate/watch/WatchAppUpdateManager.kt`
 - `app/src/main/kotlin/com/mari/app/appupdate/watch/WatchAppUpdateCheckWorker.kt`
 - `app/src/main/kotlin/com/mari/app/appupdate/watch/WatchAppUpdateScheduler.kt`
+- `app/src/main/kotlin/com/mari/app/appupdate/watch/PhoneWatchUpdateListenerService.kt`
 - `app/src/main/kotlin/com/mari/app/data/repository/WatchAppUpdateLocalStore.kt`
 - `shared/src/main/kotlin/com/mari/shared/wear/WearUpdateContract.kt` (message paths, payload schemas shared between phone and watch)
 - `app/src/main/kotlin/com/mari/app/ui/screens/settings/WatchUpdateSection.kt`
@@ -27,20 +28,20 @@ User requirement: "It must also automatically update the watch app as well."
 - `wear/src/main/kotlin/com/mari/wear/update/WearWatchUpdatePromptNotifier.kt`
 - `wear/src/main/kotlin/com/mari/wear/update/WearWatchUpdateStatusReporter.kt`
 - `wear/src/main/kotlin/com/mari/wear/data/WearWatchUpdateStore.kt`
-- `wear/src/main/kotlin/com/mari/wear/sync/PhoneMessageListenerService.kt` (add update-path handler)
+- `wear/src/main/kotlin/com/mari/wear/update/WearUpdateListenerService.kt`
 
 ### Modified
 - `app/src/main/AndroidManifest.xml` — no new permissions (phone already has `REQUEST_INSTALL_PACKAGES` for itself).
-- `wear/src/main/AndroidManifest.xml` — `REQUEST_INSTALL_PACKAGES`, `QUERY_ALL_PACKAGES` (needed to read own `versionCode`).
+- `wear/src/main/AndroidManifest.xml` — `REQUEST_INSTALL_PACKAGES` and new listener/receiver registration.
 - `app/build.gradle.kts` & `wear/build.gradle.kts` — kotlinx-serialization (or Moshi) for the payload adapters.
 
 ## Contract (`WearUpdateContract`)
 
 ```kotlin
 object WearUpdateContract {
-    const val PATH_UPDATE_PACKAGE = "/mari/update/package"   // phone -> watch, with APK Asset
-    const val PATH_UPDATE_STATUS  = "/mari/update/status"    // watch -> phone, plain JSON
-    const val PATH_STATUS_REQUEST = "/mari/update/status_request"  // phone -> watch, asks for current version
+    const val PATH_UPDATE_PACKAGE = "/mari/update/package"        // DataClient, phone -> watch, with APK Asset
+    const val PATH_UPDATE_STATUS  = "/mari/update/status"         // MessageClient, watch -> phone, JSON bytes
+    const val PATH_STATUS_REQUEST = "/mari/update/status_request" // MessageClient, phone -> watch
 }
 
 @Serializable
@@ -74,21 +75,21 @@ data class WearUpdateStatusPayload(
 
 1. Triggered by `WatchAppUpdateCheckWorker` (its own schedule, same track as phone).
 2. Call API: `getLatest(track=<user>, component="watch")`.
-3. Query paired watch via `MessageClient.sendMessage(nodeId, PATH_STATUS_REQUEST, empty)`; wait up to 12s for a `WearUpdateStatusPayload` response to know the watch's current `versionCode`.
+3. Query paired watch via `MessageClient.sendMessage(nodeId, PATH_STATUS_REQUEST, empty)`; wait up to 12s for a `WearUpdateStatusPayload` response delivered through `PhoneWatchUpdateListenerService.onMessageReceived(...)`.
 4. If `latest.versionCode <= watch.versionCode` → nothing to do.
 5. Else:
    - Download APK to phone cache via existing `AppUpdateInstaller.downloadAndVerify`.
    - Create `DataClient` request on `PATH_UPDATE_PACKAGE` with:
      - JSON metadata payload.
      - `Asset.createFromUri(FileProvider uri)` for the APK bytes.
-   - Await Watch status messages; if `SUCCEEDED` with matching `versionCode` → mark success; if `FAILED` within timeout → surface error.
+   - Await watch status messages on `PATH_UPDATE_STATUS`; if `SUCCEEDED` with matching `versionCode` → mark success; if `FAILED` within timeout → surface error.
 6. Suppress repeat transfers while `state.isTargetVersionInFlight(latest.versionCode)`.
 
 ## Watch-side Flow
 
-`PhoneMessageListenerService.onDataChanged(...)`:
+`WearUpdateListenerService` splits Data Layer responsibilities correctly:
 
-1. On `PATH_UPDATE_PACKAGE` item:
+1. `onDataChanged(...)` handles `PATH_UPDATE_PACKAGE`:
    - Parse metadata.
    - If `currentStatus.versionCode >= payload.versionCode` → reply `IDLE` / "already up to date".
    - Else copy `Asset` bytes to `cacheDir/watch_updates/<fileName>`.
@@ -101,10 +102,10 @@ data class WearUpdateStatusPayload(
      }
      ```
    - `commit()` with a `PendingIntent` to `WearWatchUpdateInstallReceiver`.
-2. On `PATH_STATUS_REQUEST`:
+2. `onMessageReceived(...)` handles `PATH_STATUS_REQUEST`:
    - Reply with current `WearUpdateStatusPayload`.
 
-Report every state change via `WearWatchUpdateStatusReporter` (phone's `MessageClient` on `PATH_UPDATE_STATUS`).
+Report every state change via `WearWatchUpdateStatusReporter` using `MessageClient` on `PATH_UPDATE_STATUS`.
 
 ## Signing Requirement
 
@@ -130,6 +131,7 @@ Report every state change via `WearWatchUpdateStatusReporter` (phone's `MessageC
    - Missing asset → `FAILED` status emitted.
 3. `WearUpdateContractTest`:
    - JSON round-trip for both payloads; backward-compat with extra fields ignored.
+   - Message paths (`PATH_STATUS_REQUEST`, `PATH_UPDATE_STATUS`) are handled via `MessageClient`; package transfer stays on `DataClient`.
 4. `WatchAppUpdateSchedulerTest`:
    - Periodic + manual enqueue mirror the phone scheduler tests.
 5. Instrumented (optional, on-device): a mock `packageInstaller` wrapper verifying `setRequireUserAction(USER_ACTION_NOT_REQUIRED)` is called when `SDK_INT >= 31`.
@@ -167,8 +169,8 @@ Commit sequence:
 - [ ] `not implemented` `WearWatchUpdateInstaller` (Asset copy, SHA verify, PackageInstaller session, USER_ACTION_NOT_REQUIRED on API 31+)
 - [ ] `not implemented` `WearWatchUpdateInstallReceiver` (PendingIntent target for PackageInstaller callback)
 - [ ] `not implemented` `WearWatchUpdateStatusReporter` (reports state changes back to phone via MessageClient)
-- [ ] `not implemented` `PhoneMessageListenerService` extended with `PATH_UPDATE_PACKAGE` and `PATH_STATUS_REQUEST` handlers
-- [ ] `not implemented` `wear/AndroidManifest.xml` updated with `REQUEST_INSTALL_PACKAGES`, `QUERY_ALL_PACKAGES`
+- [ ] `not implemented` `PhoneWatchUpdateListenerService` + `WearUpdateListenerService` wired for message/data update paths
+- [ ] `not implemented` `wear/AndroidManifest.xml` updated with `REQUEST_INSTALL_PACKAGES` and update listener/receiver registration
 - [ ] `not implemented` `WatchUpdateSection` composable in phone's settings
 - [ ] `not implemented` `WatchAppUpdateManagerTest`, `WearWatchUpdateInstallerTest`, `WearUpdateContractTest`, `WatchAppUpdateSchedulerTest` — all green
 - [ ] `not implemented` Manual end-to-end: older watch APK → publish newer → silent install → phone shows SUCCEEDED
@@ -179,6 +181,7 @@ Commit sequence:
 - `USER_ACTION_NOT_REQUIRED` only succeeds when the new APK is signed with the same keystore as the installed watch package; the publish workflow must use the shared release keystore for all tracks.
 - SHA-256 is verified on the watch before `PackageInstaller.commit()`; a mismatch emits `WearUpdateState.FAILED` with message "checksum mismatch" and deletes the cached APK bytes.
 - The phone waits up to 12 seconds for a `PATH_STATUS_REQUEST` reply; if no reply arrives, the transfer is aborted and the phone surfaces "watch not reachable" without hanging.
+- Control/status traffic uses `MessageClient`; APK bytes use `DataClient` with an `Asset`. Do not try to receive `PATH_STATUS_REQUEST` or `PATH_UPDATE_STATUS` through `onDataChanged`.
 - Duplicate transfers for the same `targetVersionCode` are suppressed while a transfer or install is in-flight.
 - Every state transition (`IDLE → RECEIVING → VERIFYING → INSTALLING → SUCCEEDED / FAILED`) is reported back to the phone via `PATH_UPDATE_STATUS` so the settings UI always reflects current progress.
 - The first install on a factory-reset watch requires user confirmation; all subsequent updates with the same keystore are silent.

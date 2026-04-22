@@ -19,13 +19,19 @@ Case-insensitive matching prevents `"Call mom"` vs `"call mom"` ambiguity. Trimm
 - `shared/src/main/kotlin/com/mari/shared/domain/DuplicateTaskNameException.kt`
 - `shared/src/test/kotlin/com/mari/shared/domain/TaskValidationUniqueNameTest.kt`
 - `app/src/test/kotlin/com/mari/app/ui/screens/add/AddTaskViewModelDedupTest.kt`
-- `app/src/test/kotlin/com/mari/app/ui/screens/tasks/EditTaskViewModelDedupTest.kt` (if not already present, create)
+- `app/src/test/kotlin/com/mari/app/ui/screens/tasks/AllTasksViewModelDedupTest.kt`
+- `wear/src/test/kotlin/com/mari/wear/ui/screens/add/AddTaskViewModelDedupTest.kt`
+- `shared/src/test/kotlin/com/mari/shared/data/sync/TaskNameDedupSyncTest.kt`
 
 ### Modified
 - `shared/src/main/kotlin/com/mari/shared/domain/TaskValidation.kt` — add `validateUniqueName`.
-- `shared/src/main/kotlin/com/mari/shared/data/repository/TaskRepository.kt` — dedup pass on import-time file merges.
+- `shared/src/main/kotlin/com/mari/shared/data/sync/TaskNameDeduplicator.kt` (new helper in shared sync layer).
 - `app/src/main/kotlin/com/mari/app/ui/screens/add/AddTaskViewModel.kt` — wire unique-name check before save.
-- `app/src/main/kotlin/com/mari/app/ui/screens/tasks/EditTaskSheet.kt` — wire unique-name check on rename.
+- `app/src/main/kotlin/com/mari/app/ui/screens/tasks/AllTasksViewModel.kt` — enforce unique-name check on rename/edit save.
+- `app/src/main/kotlin/com/mari/app/ui/screens/tasks/EditTaskSheet.kt` — surface inline name error.
+- `wear/src/main/kotlin/com/mari/wear/ui/screens/add/AddTaskViewModel.kt` — enforce unique-name check on watch task creation.
+- `app/src/main/kotlin/com/mari/app/sync/PhoneSyncService.kt` — run dedup pass after sync merge, before persist.
+- `wear/src/main/kotlin/com/mari/wear/sync/WatchSyncService.kt` — same.
 
 ## Detailed Steps
 
@@ -76,18 +82,22 @@ class DuplicateTaskNameException(val existingTaskId: String, val existingTaskNam
 - On failure, set `uiState.nameError = "A task named '<X>' already exists"` and **do not** clear the input.
 - `isSaving` returns to false; the dialog remains open.
 
-### 4. Wire into EditTaskSheet rename flow
+### 4. Wire into the current edit-save flow
 
+- The current codebase saves edits through `AllTasksViewModel`, not a dedicated edit ViewModel.
 - Pass `excludingId = currentTask.id` so renaming a task to its own current name is a no-op success.
+- Surface the validation error inline in `EditTaskSheet`; do not close the sheet on failure.
 
 ### 5. Cross-device sync dedup pass
 
-When `FileTaskRepository` merges an imported `TaskFile` (e.g. watch → phone handoff), there is a legitimate window where two devices create the same name offline. Strategy:
+When phone and watch create tasks offline, there is a legitimate window where two devices create the same normalized name with different task IDs. Strategy:
 
-- In `FileTaskRepository.merge(local, remote)`, after union, run a dedup pass:
+- Add a shared helper `TaskNameDeduplicator.resolveCollisions(tasks, clock, receivingDeviceId)` and call it from the sync apply path on both phone and watch after the normal ID-based merge:
   - Group non-deleted tasks by `name.trim().lowercase()`.
-  - For each group with `> 1` entry, keep the earliest `createdAt` as-is, rename the others to `"<name> (2)"`, `"<name> (3)"`, etc. (incrementing until unique within the merged set), updating `updatedAt` and `lastModifiedBy = DeviceId.SYSTEM` (add this enum value if needed).
-  - Log each rename at `INFO` so the user can see in logs what happened.
+  - For each group with `> 1` entry, keep the earliest `createdAt` as-is and rename the others to `"<name> (2)"`, `"<name> (3)"`, etc. (incrementing until unique within the merged set).
+  - Each auto-rename must also increment `version`, because sync propagation in this app is version-based.
+  - Use the receiving device id (`PHONE` or `WATCH`) as `lastModifiedBy`; do not invent a new device id solely for dedup.
+  - Return a small report so the caller can log each rename at `INFO`.
 
 ## Tests (RED before GREEN)
 
@@ -100,13 +110,16 @@ When `FileTaskRepository` merges an imported `TaskFile` (e.g. watch → phone ha
 2. `AddTaskViewModelDedupTest`:
    - Save with clashing name emits `nameError`, does not call repository.
    - Save with unique name calls repository exactly once, emits `saved = true`.
-3. `EditTaskViewModelDedupTest`:
+3. `AllTasksViewModelDedupTest`:
    - Rename to own name → success (no error, no-op write).
    - Rename to another task's name → error.
-4. `FileTaskRepositoryDedupMergeTest`:
+4. `wear AddTaskViewModelDedupTest`:
+   - Save with clashing name emits inline error, does not write.
+   - Save with unique name succeeds.
+5. `TaskNameDedupSyncTest`:
    - Two devices create task "Gym" → merged file has "Gym" and "Gym (2)".
    - Three devices create "Gym" → "Gym", "Gym (2)", "Gym (3)".
-   - Rename preserves `createdAt`, bumps `updatedAt`, sets `lastModifiedBy = SYSTEM`.
+   - Auto-rename preserves `createdAt`, bumps `updatedAt`, increments `version`, and sets `lastModifiedBy` to the receiving device.
 
 ## Validation Gate
 
@@ -114,11 +127,12 @@ When `FileTaskRepository` merges an imported `TaskFile` (e.g. watch → phone ha
 - [ ] Manual device test: create "Buy milk" → create second "buy milk" → error banner, original saved.
 - [ ] Manual device test: rename "Buy milk" to "Buy MILK" → error.
 - [ ] Manual device test: rename "Buy milk" to "Buy milk" (self) → accepted.
-- [ ] Simulated cross-device merge (drop two conflicting files in `tasks.json` + `tasks.json.incoming`) → dedup pass renames one, nothing lost.
+- [ ] Simulated cross-device sync (phone + watch create the same name offline) → dedup pass renames one, nothing lost.
+- [ ] Watch manual test: create duplicate name from the watch UI → inline error, no write.
 
 ## Exit Criteria
 
-Duplicates blocked at UI and at file-merge, tests green, log entry on auto-rename is visible.
+Duplicates blocked at all task-creation/write surfaces and during sync merge, tests green, log entry on auto-rename is visible.
 Commit: `feat(tasks): enforce unique task names with case-insensitive dedup`.
 
 ---
@@ -129,19 +143,22 @@ Commit: `feat(tasks): enforce unique task names with case-insensitive dedup`.
 - [ ] `not implemented` `TaskValidation.validateName` (blank check, max-length)
 - [ ] `not implemented` `TaskValidation.validateUniqueName` (case-insensitive, trimmed, excludingId support)
 - [ ] `not implemented` `AddTaskViewModel` wired with unique-name check before save
-- [ ] `not implemented` `EditTaskSheet` rename flow wired with unique-name check (`excludingId = currentTask.id`)
-- [ ] `not implemented` `FileTaskRepository.merge` dedup pass (suffix "(2)", "(3)", etc.; `lastModifiedBy = SYSTEM`)
+- [ ] `not implemented` `AllTasksViewModel` / `EditTaskSheet` rename flow wired with unique-name check (`excludingId = currentTask.id`)
+- [ ] `not implemented` watch `AddTaskViewModel` wired with unique-name check before save
+- [ ] `not implemented` shared sync dedup pass (suffix "(2)", "(3)", etc.; increments `version`; `lastModifiedBy = receivingDeviceId`)
 - [ ] `not implemented` `TaskValidationUniqueNameTest` written and green
 - [ ] `not implemented` `AddTaskViewModelDedupTest` written and green
-- [ ] `not implemented` `EditTaskViewModelDedupTest` written and green
-- [ ] `not implemented` `FileTaskRepositoryDedupMergeTest` written and green
+- [ ] `not implemented` `AllTasksViewModelDedupTest` written and green
+- [ ] `not implemented` watch `AddTaskViewModelDedupTest` written and green
+- [ ] `not implemented` `TaskNameDedupSyncTest` written and green
 
 ## Functional Requirements / Key Principles
 
 - Task name uniqueness is enforced case-insensitively and after trimming; `"Call mom"` and `"call mom "` are treated as the same name.
 - Soft-deleted tasks (non-null `deletedAt`) are excluded from the uniqueness check; a deleted name can be reused.
 - Renaming a task to its own current name (case-preserved or not) is always accepted without error.
-- On a cross-device merge collision, the earliest `createdAt` task keeps its original name; all others are suffixed `" (N)"` in ascending order.
-- Auto-renamed tasks during merge have `lastModifiedBy = DeviceId.SYSTEM` and a bumped `updatedAt`; the rename is logged at INFO level.
+- Uniqueness is enforced on every current write path: phone add, phone edit/rename, and watch add.
+- On a cross-device collision, the earliest `createdAt` task keeps its original name; all others are suffixed `" (N)"` in ascending order.
+- Auto-renamed tasks during sync merge increment `version`, bump `updatedAt`, and set `lastModifiedBy` to the receiving device; the rename is logged at INFO level.
 - The UI error is inline (not a toast); the form remains open and the name field retains the conflicting input for user correction.
 - Repository uniqueness check reads the current task list once per save attempt; there is no background polling or optimistic locking.

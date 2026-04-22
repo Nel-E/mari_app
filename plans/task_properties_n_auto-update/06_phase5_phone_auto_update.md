@@ -7,6 +7,8 @@
 
 The phone app periodically (and at startup, and on demand) checks the publish API for a newer APK in the user's selected **track** (`stable` or `beta`), downloads it, verifies SHA-256, and asks the user to install it via `FileProvider` + `ACTION_VIEW`. Ports the proven architecture from `bfi_dev/android_app/appupdate/`.
 
+Published OTA artifacts must be release-signed APKs with the same application id as the installed app. Debug builds with an application-id suffix are for local development only and must never be published to the OTA feed.
+
 ## Rationale
 
 User requirement: "create auto-update… see how bfi_dev implements it… must also automatically update the watch." Plus the track toggle: "user can choose to update only when I build release versions."
@@ -103,6 +105,8 @@ interface AppUpdateApiService {
 
 `AppUpdateRepositoryImpl` combines API + local state. Compares `response.versionCode` > `BuildConfig.VERSION_CODE`. Downgrade blocked. Respects `minInstalledVersionCode` if present. Returns a decided `AppUpdateCheckResult` (update available? should notify?).
 
+The selected track only chooses which remote feed to query. `versionCode` must still be globally monotonic across **all** published builds, so a user who installs beta can later upgrade to stable.
+
 ### 4. Local store
 
 `AppUpdateLocalStore` uses DataStore Preferences. Expose a `StateFlow<AppUpdateLocalState>` for settings-screen observation.
@@ -187,7 +191,7 @@ appUpdateScheduler.enqueueOnStartup()
 
 ### 13. Network module
 
-- Base URL from `BuildConfig.MARI_API_BASE_URL` (set in `build.gradle.kts` per variant; defaults to RPi LAN address, can be overridden in `local.properties`).
+- Base URL from `BuildConfig.MARI_API_BASE_URL` (set in `build.gradle.kts`; defaults to the RPi LAN address, can be overridden in `local.properties`).
 - OkHttp interceptor adds `X-Mari-Token: BuildConfig.MARI_API_TOKEN` (also from gradle/local.properties).
 - Timeouts: connect 10s, read 60s (artifacts are large).
 - Logging interceptor only in debug variant.
@@ -203,7 +207,8 @@ When the user toggles "Receive beta builds":
 
 1. `AppUpdateRepositoryTest` (fake API + fake local store):
    - Stable track, server returns higher version → `availableUpdate` set, `shouldNotify = true`.
-   - Beta track, server returns beta-suffixed version → detected via `versionCode` > `BuildConfig`.
+   - Beta track, server returns beta-suffixed version with higher `versionCode` → update offered.
+   - Device currently on beta, server returns newer stable with higher `versionCode` after track switch → update offered.
    - Server returns same version → no update.
    - Server returns lower version → no update (downgrade protection).
    - `minInstalledVersionCode` above current → filtered out.
@@ -228,8 +233,9 @@ When the user toggles "Receive beta builds":
 ## Validation Gate
 
 - [ ] All new tests green.
-- [ ] Install current (older) APK on device. Publish a newer stable APK. Within one periodic cycle the phone shows a notification. Tap → download → install.
-- [ ] Toggle **Receive beta builds**. Publish a newer beta APK. Phone offers the beta.
+- [ ] Install current (older) release APK on device. Publish a newer stable release APK. Within one periodic cycle the phone shows a notification. Tap → download → install.
+- [ ] Toggle **Receive beta builds**. Publish a newer beta release APK. Phone offers the beta.
+- [ ] Start on beta, then switch back to stable and publish a newer stable build with a higher global `versionCode`. Phone offers the stable build.
 - [ ] Turn off auto-check. Publish newer APK. No notification. Tap **Check now** → notified immediately.
 - [ ] Corrupt the published APK (edit a byte) and **preserve** the old SHA in `latest.json` → installer reports SHA mismatch, no install intent fired.
 - [ ] First-time install flow: grant "Install unknown apps" prompt appears exactly once, subsequent updates do not re-prompt.
@@ -270,9 +276,11 @@ Commit sequence:
 
 - The app checks for updates periodically (default 6h), on startup, and on-demand; all three paths go through the same worker.
 - Downgrade is always blocked: `response.versionCode <= BuildConfig.VERSION_CODE` produces no update, regardless of track.
+- Track selection chooses the remote feed; it does **not** relax the global monotonic `versionCode` requirement across beta and stable.
 - SHA-256 is verified against the value in `latest.json` after download; a mismatch deletes the cached file and returns `Result.failure` — no install intent is fired.
 - The track toggle (`STABLE` / `BETA`) triggers `reenqueueOnTrackChange`, clears `lastNotifiedVersionCode`, and immediately enqueues a fresh check on the new track.
 - Auto-check can be disabled in settings; when disabled, only manual "Check now" triggers a network call.
 - The notification deduplicates by `lastNotifiedVersionCode`; the user is not re-notified for the same version unless they switch tracks.
 - `X-Mari-Token` is read from `BuildConfig.MARI_API_TOKEN` (set via `local.properties`); it is never stored in source control.
+- OTA artifacts are release-signed APKs with the same application id as the installed package; debug/applicationId-suffixed builds are unsupported for OTA.
 - Download progress is visible in `UpdateAvailableScreen`; the install intent is only fired after a successful SHA-verified download.

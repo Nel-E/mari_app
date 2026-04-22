@@ -20,20 +20,23 @@ One codebase, two git branches, one backend, one channel with two tracks (`stabl
 
 ## Version Scheme
 
-Borrowed from `app_m` (6-digit derived `versionCode`):
+Published `versionCode` must be globally monotonic across **every** installable APK, regardless of track.
 
-1. Strip any suffix from `versionName` (`-beta` etc.).
-2. Split on `.`; pad with trailing zeros to exactly **6** numeric components.
-3. Concatenate → `versionCode` (integer).
+Recommended 6-digit scheme:
+
+1. Keep `versionName` human-readable; beta builds may append `-beta`.
+2. Reserve the first 4 digits for the marketing version (`major.minor.patch.build`).
+3. Reserve the last 2 digits for a monotonically increasing publish sequence within that marketing version.
+4. Stable and beta must **not** share a `versionCode` if one should upgrade the other.
 
 | `versionName` | Padded | `versionCode` |
 |---|---|---|
-| `1.0.1.0-beta` | `1,0,1,0,0,0` | `101000` |
-| `1.0.1.4-beta` | `1,0,1,4,0,0` | `101400` |
-| `1.0.1.4` | `1,0,1,4,0,0` | `101400` |
-| `1.1.0` | `1,1,0,0,0,0` | `110000` |
+| `1.0.1.0-beta` | `1,0,1,0,0,1` | `101001` |
+| `1.0.1.4-beta` | `1,0,1,4,0,1` | `101401` |
+| `1.0.1.4` | `1,0,1,4,0,2` | `101402` |
+| `1.1.0` | `1,1,0,0,0,1` | `110001` |
 
-> **Note:** beta and stable of the *same* marketing version share the same `versionCode`. That is fine because they are **different tracks** — the phone filters by track before comparing. The `versionCode` ordering only needs to be correct *within* a track.
+> **Invariant:** if a user can move from build A to build B through OTA, then `versionCode(B) > versionCode(A)`. Track filtering happens **before** the fetch, but Android package updates still compare the installed `versionCode`.
 
 ## Publish Scripts
 
@@ -78,15 +81,16 @@ Identical shape, different target dir (`<root>/watch/<track>/`) and different `c
    - Update `releases/NNNN__<ver>.json` templates.
    - Commit: `chore(release): bump to <versionName>`.
 2. Build APKs (foreground, see `guides/apk_publish_guide.md` pattern for mari):
-   - Phone: `./gradlew :app:assembleBetaDebug` (or `:app:assembleRelease` for stable).
-   - Watch: `./gradlew :wear:assembleBetaDebug` (or `:wear:assembleRelease`).
+   - Phone: `./gradlew :app:assembleRelease`
+   - Watch: `./gradlew :wear:assembleRelease`
    - **Both APKs must be signed with the same keystore** — required for silent watch updates (`USER_ACTION_NOT_REQUIRED`).
+   - Debug/applicationId-suffixed artifacts are for local development only; do **not** publish them to the OTA feed.
 3. Publish phone:
    ```bash
    scripts/publish_phone.sh \
-     --apk-path app/build/outputs/apk/beta/debug/app-beta-debug.apk \
+     --apk-path app/build/outputs/apk/release/app-release.apk \
      --track beta \
-     --version-code 101400 \
+     --version-code 101401 \
      --version-name 1.0.1.4-beta \
      --notification-title "Mari 1.0.1.4-beta available" \
      --notification-text "Deadline reminders and daily nudge."
@@ -95,11 +99,11 @@ Identical shape, different target dir (`<root>/watch/<track>/`) and different `c
 5. On-device verification:
    - Phone running `1.0.1.3-beta` with beta track enabled picks up `1.0.1.4-beta` within one check cycle.
    - Watch picks up its update when triggered.
-6. When stable: merge `beta` → `release`, drop the `-beta` suffix in `versionName` (keep `versionCode` aligned), build release APKs, publish with `--track stable`, commit: `chore(release): publish stable <versionName>`.
+6. When stable: merge `beta` → `release`, drop the `-beta` suffix in `versionName`, bump the publish-sequence portion of `versionCode`, build release APKs, publish with `--track stable`, commit: `chore(release): publish stable <versionName>`.
 
 ## Backend Deployment Ops
 
-- RPi: `cd /home/mari/mari_app_backend && git pull && docker compose up -d --build mari-api`.
+- RPi: `cd /home/mari/mari_app/backend_api && git pull && docker compose up -d --build mari-api`.
 - Data dir: `/home/mari/mari_updates/` — **never** wiped by compose (bind mount).
 - Rotate `MARI_API_TOKEN`:
   1. Update `.env` on RPi.
@@ -139,7 +143,7 @@ Identical shape, different target dir (`<root>/watch/<track>/`) and different `c
 | Token leaked from `local.properties` into public repo | `.gitignore` `local.properties`; grep CI for token pattern. |
 | `latest.json` published with wrong SHA | Publish script computes SHA from the copied APK, not from user input. |
 | Phone stuck on old track after user toggles | `reenqueueOnTrackChange` clears `lastNotifiedVersionCode` and runs a manual check immediately. |
-| Version ordering collision between tracks | Filter by track **before** comparing `versionCode`. Covered in `AppUpdateRepositoryTest`. |
+| User on beta never receives a later stable build | Keep `versionCode` globally monotonic across both tracks; stable publish must be higher than any beta build that may already be installed. |
 | RPi restart loses published data | Bind mount outside the container; snapshot `/home/mari/mari_updates/` in your backup routine. |
 
 ## Done Definition
@@ -169,7 +173,7 @@ Plan is complete when:
 - `publish_phone.sh` and `publish_watch.sh` are idempotent: re-running with identical inputs is a no-op (same SHA detected, exits 0); re-running with different bytes at the same version aborts with an error.
 - SHA-256 is computed from the file after it is copied to the artifact directory, not from user-supplied input, preventing metadata/file mismatches.
 - `versionCode` must be strictly greater than the value in the existing `latest.json`; the script aborts if not.
-- Beta and stable builds of the same marketing version share the same `versionCode` by design; they are on different tracks and track-filtered before version comparison.
+- Beta and stable builds of the same marketing version do **not** share a `versionCode`; publish order must remain globally monotonic across both tracks.
 - Phone and watch APKs for all tracks must be signed with the same shared release keystore; changing the keystore requires a coordinated manual-update bridging release.
 - Token rotation requires a bridging build: a one-off APK built and side-loaded while the old token is still valid, so subsequent fetch requests use the new token.
 - The RPi bind mount is `:ro` for the API container; only publish scripts write to the host path, never the API process.

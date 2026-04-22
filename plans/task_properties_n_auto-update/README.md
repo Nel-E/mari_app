@@ -11,10 +11,10 @@ Comprehensive, phased plan for four features in `mari_app`:
 
 | Decision | Value |
 |---|---|
-| `Task.name` vs `description` | Add `name` (unique, required). Keep `description` as optional notes field. |
+| `Task.name` vs `description` | Add `name` (unique, required). Keep `description` as the stored optional notes field. Do **not** add a second persisted `notes` field. |
 | Backend host | Docker container on RPi. Portable `docker-compose.yml`. |
 | Channels | **One** channel (`prod`). Two git branches (`beta` + `release`) both publish to slots under the same channel. Phone has a "Receive beta builds" toggle. |
-| Versioning | Single `versionName` + 6-digit derived `versionCode` scheme (borrowed from `bfi_dev`). Beta builds use `-beta` suffix on `versionName`. |
+| Versioning | `versionName` stays human-readable; published `versionCode` must be a globally monotonic 6-digit integer across **both** tracks. Beta builds use `-beta` suffix on `versionName`, but stable cuts still need a higher `versionCode` than any installable beta. |
 | Attribution | Standard commit style, no Co-Authored-By (per global git settings). |
 
 ## Execution Order
@@ -38,6 +38,7 @@ Phases are ordered by dependency. Every phase has **tests first**, a **validatio
 - **Null safety:** never `!!`. Prefer `?.`, `?:`, `requireNotNull`.
 - **Error handling:** `Result<T>` or sealed types. Never swallow. Never catch `CancellationException`.
 - **Validation at boundaries:** user input, SAF reads, network responses, Wear payloads.
+- **Schema changes are cross-device changes:** when `Task` changes, update `TaskFile` migration, sync/conflict logic, and every phone/watch write path in the same phase.
 - **Commits:** conventional format (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`).
 - **No local installs** without user permission (see `CLAUDE.md`). If a dependency is missing, ask.
 - **Build:** run Gradle in the **foreground** so compilation errors are visible (per `app_m` guide).

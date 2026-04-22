@@ -115,9 +115,9 @@ backend_api/
 ```dockerfile
 FROM python:3.12-slim
 WORKDIR /app
-COPY pyproject.toml .
-RUN pip install --no-cache-dir -e .
+COPY pyproject.toml README.md ./
 COPY mari_api ./mari_api
+RUN pip install --no-cache-dir .
 ENV PYTHONUNBUFFERED=1 \
     MARI_DATA_DIR=/data/app_updates \
     MARI_API_TOKEN=""
@@ -130,7 +130,7 @@ CMD ["uvicorn", "mari_api.main:app", "--host", "0.0.0.0", "--port", "8080"]
 ```yaml
 services:
   mari-api:
-    build: ./backend_api
+    build: .
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -151,7 +151,7 @@ services:
 
 - `track` ∈ `{stable, beta}` else `400`.
 - `component` ∈ `{phone, watch}` else `400`.
-- `file_name` — regex `^[A-Za-z0-9._-]+$`, plus confine resolved path inside the expected `<track>/<component>/` dir (path traversal guard). Deny `..`.
+- `file_name` — regex `^[A-Za-z0-9._-]+$`, plus confine resolved path inside the expected `<component>/<track>/` dir (path traversal guard). Deny `..`.
 - `after_version_code` — non-negative int.
 - Missing or mismatched token → `401`.
 
@@ -185,7 +185,7 @@ Use `FileResponse` with `media_type="application/vnd.android.package-archive"`, 
 - [ ] `pytest` in `backend_api/` all green.
 - [ ] Build image: `docker compose build mari-api` succeeds.
 - [ ] Run locally: `docker compose up mari-api`, `curl -H "X-Mari-Token: $TOK" http://localhost:8080/api/app-update/latest?track=stable&component=phone` returns the fixture.
-- [ ] RPi deploy: repo synced, `docker compose up -d mari-api`, container healthcheck reports healthy, `/healthz` reachable from another LAN device.
+- [ ] RPi deploy: repo synced, `cd /home/mari/mari_app/backend_api && docker compose up -d mari-api`, container healthcheck reports healthy, `/healthz` reachable from another LAN device.
 - [ ] File a sample `latest.json` manually, publish a dummy APK (any 1 MB blob), phone `curl` fetches and the SHA256 matches.
 
 ## Security & Ops Notes
@@ -225,7 +225,7 @@ Commit sequence (in `backend_api/`):
 
 - All endpoints require `X-Mari-Token` header; missing or wrong token returns `401`. When `MARI_API_TOKEN` env var is empty the server logs a warning and disables auth (local dev only).
 - `track` must be `stable` or `beta`; `component` must be `phone` or `watch`; any other value returns `400`.
-- Artifact `file_name` is validated against `^[A-Za-z0-9._-]+$` and the resolved path is confined inside `<data_dir>/<track>/<component>/`; path traversal (`..`) returns `400`.
+- Artifact `file_name` is validated against `^[A-Za-z0-9._-]+$` and the resolved path is confined inside `<data_dir>/<component>/<track>/`; path traversal (`..`) returns `400`.
 - The API mounts the updates directory read-only (`:ro`); it never writes to the filesystem — publish scripts write directly to the host path.
 - `GET /api/app-update/artifacts/...` streams the file with `Content-Length` from `os.stat` and `Cache-Control: public, max-age=3600`; SHA-256 integrity is the client's responsibility (verified against `latest.json`).
 - `/healthz` returns `200 {"status":"ok"}` with no auth required; used by Docker healthcheck.

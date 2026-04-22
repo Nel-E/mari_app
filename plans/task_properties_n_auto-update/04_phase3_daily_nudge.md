@@ -18,6 +18,7 @@ User requirement: "create a Settings to configure a daily notification time to r
 ### New
 - `app/src/main/kotlin/com/mari/app/reminders/DailyNudgeScheduler.kt`
 - `app/src/main/kotlin/com/mari/app/reminders/DailyNudgeReceiver.kt`
+- `app/src/main/kotlin/com/mari/app/reminders/NudgeActionReceiver.kt`
 - `app/src/main/kotlin/com/mari/app/ui/screens/settings/DailyNudgeSection.kt`
 - Tests for both pure classes.
 
@@ -27,6 +28,7 @@ User requirement: "create a Settings to configure a daily notification time to r
 - `app/src/main/kotlin/com/mari/app/ui/screens/settings/SettingsScreen.kt`
 - `app/src/main/kotlin/com/mari/app/ui/screens/settings/SettingsViewModel.kt`
 - `app/src/main/kotlin/com/mari/app/reminders/BootReceiver.kt`
+- `app/src/main/kotlin/com/mari/app/reminders/BootRescheduler.kt`
 - `app/src/main/kotlin/com/mari/app/reminders/ReminderNotifier.kt` (new notification factory method)
 - `app/src/main/AndroidManifest.xml` — register `DailyNudgeReceiver`.
 
@@ -51,9 +53,9 @@ class DailyNudgeScheduler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val alarmManager: AlarmManager,
     private val clock: Clock,
-    private val quietHours: QuietHours,
+    private val settingsRepository: SettingsRepository,
 ) {
-    fun schedule(hour: Int, minute: Int) { /* setRepeating daily, or setExactAndAllowWhileIdle + re-arm */ }
+    fun schedule(hour: Int, minute: Int) { /* setExactAndAllowWhileIdle + receiver re-arm */ }
     fun cancel() { /* cancel PendingIntent */ }
 }
 ```
@@ -67,11 +69,11 @@ class DailyNudgeScheduler @Inject constructor(
 ```kotlin
 class DailyNudgeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        // Hilt field injection
         val result = goAsync()
         scope.launch {
             try {
-                val tasks = repository.observeAll().first()
+                val settings = settingsRepository.current()
+                val tasks = taskSnapshotLoader.load()
                 val active = tasks.firstOrNull { it.status == TaskStatus.EXECUTING && it.deletedAt == null }
                 if (active != null) {
                     notifier.postActiveTaskNudge(active)
@@ -84,6 +86,8 @@ class DailyNudgeReceiver : BroadcastReceiver() {
     }
 }
 ```
+
+Use a boot/cold-start-safe task snapshot loader here as well. Do **not** assume the in-memory repository has already been initialized when the alarm fires into a dead process.
 
 ### 4. Notifications
 
@@ -101,7 +105,7 @@ Two styles on the existing `ReminderNotifier` channel:
 
 ### 6. Boot re-arm
 
-`BootReceiver.onReceive` reads settings and re-arms if `dailyNudgeEnabled`.
+Extend `BootRescheduler` so `BootReceiver.onReceive` re-arms the daily nudge from persisted settings if `dailyNudgeEnabled`.
 
 ## Tests (RED before GREEN)
 
@@ -115,6 +119,7 @@ Two styles on the existing `ReminderNotifier` channel:
    - EXECUTING task present → `postActiveTaskNudge` called, `postPickTaskNudge` not called.
    - No EXECUTING task → only `postPickTaskNudge` called.
    - After fire, scheduler is re-armed exactly once.
+   - Cold-start receiver path loads persisted tasks/settings without relying on repository hydration.
 3. `SettingsViewModelDailyNudgeTest`:
    - Toggle on with default time → `scheduler.schedule` called.
    - Toggle off → `scheduler.cancel` called.
@@ -142,12 +147,13 @@ Commit: `feat(reminders): add configurable daily task nudge with quiet-hours sup
 - [ ] `not implemented` `PhoneSettings` extended with `dailyNudgeEnabled`, `dailyNudgeHour`, `dailyNudgeMinute`
 - [ ] `not implemented` `DailyNudgeScheduler` (setExactAndAllowWhileIdle + fallback; quiet-hours push)
 - [ ] `not implemented` `DailyNudgeReceiver` fires notification, branches on EXECUTING task, re-arms alarm
+- [ ] `not implemented` `NudgeActionReceiver` handles Continue / Change / Complete actions
 - [ ] `not implemented` `ReminderNotifier` extended with `postActiveTaskNudge` and `postPickTaskNudge`
 - [ ] `not implemented` `DailyNudgeSection` composable in `SettingsScreen`
 - [ ] `not implemented` `SettingsViewModel` wired: toggle on/off, time change → schedule/cancel
-- [ ] `not implemented` `BootReceiver` re-arms daily nudge on reboot
+- [ ] `not implemented` `BootRescheduler` extended to re-arm daily nudge on reboot
 - [ ] `not implemented` `DailyNudgeSchedulerTest` written and green (future/past time, quiet hours, cancel, fallback)
-- [ ] `not implemented` `DailyNudgeReceiverTest` written and green (active vs no-active branching, re-arm)
+- [ ] `not implemented` `DailyNudgeReceiverTest` written and green (active vs no-active branching, re-arm, cold-start load)
 - [ ] `not implemented` `SettingsViewModelDailyNudgeTest` written and green
 
 ## Functional Requirements / Key Principles
@@ -156,7 +162,8 @@ Commit: `feat(reminders): add configurable daily task nudge with quiet-hours sup
 - If the computed next fire time falls within quiet hours, the alarm is pushed to the end of the quiet-hours window.
 - When there is an EXECUTING (non-deleted) task, the notification body names that task and offers Continue / Change / Complete actions. When there is none, it prompts the user to pick a task.
 - Quiet hours defined in `PhoneSettings` are the single authoritative source; the nudge scheduler and the existing `AlarmReminderScheduler` both use the same `QuietHours` helper.
-- On reboot, `BootReceiver` re-arms the alarm if `dailyNudgeEnabled = true`; no alarm is lost after a restart.
+- Receivers must load persisted tasks/settings safely on cold start; they cannot assume repository init completed before `onReceive`.
+- On reboot, `BootRescheduler` re-arms the alarm if `dailyNudgeEnabled = true`; no alarm is lost after a restart.
 - Toggling the nudge off cancels any pending `PendingIntent` immediately, with no stale alarm left in `AlarmManager`.
 - `DailyNudgeScheduler.schedule(h, m)` called while the nudge is already scheduled replaces the pending intent (idempotent re-schedule).
 - Exact-alarm permission denial is handled gracefully: falls back to `setAndAllowWhileIdle`, no crash, no missing notification.

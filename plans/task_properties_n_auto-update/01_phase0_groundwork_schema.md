@@ -5,11 +5,11 @@
 
 ## Goal
 
-Prepare the on-disk schema to carry new `Task` fields (`name`, `notes`, deadline, reminders, color) without breaking existing installs. Bump `TaskFile.CURRENT_SCHEMA_VERSION` from `1` → `2` with a tested, reversible migration path for read, and an immutable migration for write. Centralize the settings touched by later phases.
+Prepare the on-disk schema and shared sync semantics to carry new `Task` fields (`name`, deadline, reminders, color) without breaking existing installs. Bump `TaskFile.CURRENT_SCHEMA_VERSION` from `1` → `2` with a tested migration path for read and an immutable migration for write. Lock the storage model now so later phases only build UI, schedulers, and update plumbing on top.
 
 ## Rationale
 
-All four features below depend on either new fields on `Task` or new keys in `PhoneSettings`. Doing the schema bump once, up front, removes rework and forces a single migration review.
+All later features depend on new fields on `Task` or new keys in `PhoneSettings`. Doing the schema bump once, up front, removes rework and forces a single migration review. Because phone/watch sync serializes full `Task` payloads, additive schema work must also update shared sync/conflict behavior in the same phase.
 
 ## Files (new/modified)
 
@@ -26,6 +26,8 @@ All four features below depend on either new fields on `Task` or new keys in `Ph
 - `shared/src/main/kotlin/com/mari/shared/data/serialization/TaskFile.kt` — bump `CURRENT_SCHEMA_VERSION` to `2`.
 - `shared/src/main/kotlin/com/mari/shared/data/serialization/SchemaMigrations.kt` — add `v1→v2` case.
 - `shared/src/main/kotlin/com/mari/shared/data/serialization/TaskFileCodec.kt` — verify `ignoreUnknownKeys = true`, `encodeDefaults = true`.
+- `shared/src/main/kotlin/com/mari/shared/data/sync/ConflictClassifier.kt` — include new task metadata in conflict decisions.
+- `shared/src/test/kotlin/com/mari/shared/data/sync/ConflictClassifierTest.kt` — cover metadata-only edits.
 
 ## Detailed Steps
 
@@ -73,7 +75,7 @@ data class DeadlineReminder(
 
 ### 4. `TaskColor`
 
-Value object wrapping a hex string: `TaskColor.parse("#FF8A65")` returning `Result<TaskColor>`. Reject bad hex at the boundary.
+Value object wrapping a hex string: `TaskColor.parse("#FF8A65")` returning `Result<TaskColor>`. Reject bad hex at the boundary. Persist `colorHex` as a raw string on `Task` for simple serialization; use `TaskColor` only at validation and UI boundaries.
 
 ### 5. Extend `Task`
 
@@ -92,7 +94,6 @@ data class Task(
 
     // v2 additions
     val name: String = "",                                // UNIQUE identifier (Phase 1 enforces)
-    val notes: String? = null,                            // optional long description
     @Serializable(with = InstantSerializer::class)
     val dueAt: Instant? = null,
     val dueKind: DueKind? = null,                         // preset used to compute dueAt
@@ -101,7 +102,7 @@ data class Task(
 )
 ```
 
-> **Note:** `description` is **not renamed**. It keeps its current JSON key to maximize backward compatibility. Going forward, UI uses `name` as identifier and `notes` (alias for `description`) as the optional long text. We do not double-store — `description` IS `notes`. A Kotlin extension `val Task.notes: String? get() = description.ifBlank { null }` can help if desired, but the explicit `notes` field above is cleanest. **Decide one approach in step 5 and stick to it.** Recommendation: keep `description` as the stored field, expose a read-only `notes` accessor, and add `name` as the new stored field.
+> **Note:** `description` is **not renamed** and is **not duplicated**. It remains the stored optional notes field for backward compatibility. UI should migrate to `name` as the primary label and treat `description` as notes.
 
 ### 6. Schema migration v1 → v2
 
@@ -121,19 +122,23 @@ object SchemaMigrations {
     private fun migrateV1toV2(file: TaskFile): TaskFile = file.copy(
         schemaVersion = 2,
         tasks = file.tasks.map { t ->
-            t.copy(name = t.name.ifBlank { t.description.take(80) })
+            t.copy(
+                name = t.name.ifBlank {
+                    t.description.trim().ifBlank { "Task ${t.id.take(8)}" }.take(80)
+                },
+            )
         },
     )
 }
 ```
 
-Default `name` from existing `description` (truncated to 80 chars). The user will rename duplicates in Phase 1 UI.
+Default `name` from existing `description` (trimmed and truncated to 80 chars). If corrupted legacy data has a blank description, seed a deterministic fallback name so the model stays valid. The user can rename duplicates in Phase 1 UI.
 
-### 7. Verify `TaskFileCodec`
+### 7. Verify `TaskFileCodec` and additive sync compatibility
 
 ```kotlin
 val json = Json {
-    ignoreUnknownKeys = true          // REQUIRED so watch on old schema can read v2 files
+    ignoreUnknownKeys = true          // REQUIRED so older peers tolerate additive fields
     encodeDefaults = true
     classDiscriminator = "_type"
     serializersModule = SerializersModule {
@@ -142,11 +147,16 @@ val json = Json {
 }
 ```
 
+- Keep `SyncEnvelope` additive for this phase; no envelope-version bump is required if only `Task` fields are added.
+- Verify `SyncEnvelope` CBOR still uses `ignoreUnknownKeys = true`.
+- Update `ConflictClassifier` so metadata-only edits to `name`, `dueAt`, `dueKind`, `deadlineReminders`, or `colorHex` are not silently discarded.
+
 ## Tests (RED before GREEN)
 
 1. `SchemaMigrationsV1ToV2Test`:
-   - v1 file with 3 tasks → v2; each task `name == description.take(80)`.
-   - v1 file with `schemaVersion = 1` missing `tasks` → migration succeeds with empty list.
+   - v1 file with 3 tasks → v2; each task `name` is seeded from trimmed legacy `description` and truncated to 80 chars.
+   - v1 file with `schemaVersion = 1` and empty `tasks` → migration succeeds unchanged except for the version bump.
+   - v1 file with blank legacy `description` → fallback `name` is generated.
    - v2 file (already current) → unchanged.
    - Unknown schema version → throws `IllegalStateException`.
 2. `DueDateResolverTest`:
@@ -159,12 +169,17 @@ val json = Json {
    - v2 task with all fields set → encode → decode → equals.
    - v2 task decoded with extra unknown key → tolerated.
    - DueKind polymorphism: each subtype encodes and decodes.
+4. `ConflictClassifierTest` / sync regression:
+   - Metadata-only rename (`name` changed, same status) is treated as a real edit, not `NO_OP`.
+   - Due-date-only edit participates in adopt/conflict logic.
+   - Additive task fields round-trip through `SyncEnvelope.DeltaBundle`.
 
 ## Validation Gate
 
 - [ ] All new tests green.
 - [ ] `./gradlew :shared:test` green.
 - [ ] Existing `TaskValidationTest`, `ExecutionRulesTest`, `TaskListingFilterTest`, `ShakePoolTest`, `SeedingTest` untouched and green.
+- [ ] Existing sync tests (`ConflictClassifierTest`, `SyncEngineTest`, `SyncE2ETest`) still green with the new task shape.
 - [ ] Install app over an existing install on a test device: prior tasks still visible, same `updatedAt`.
 - [ ] Re-launch app: tasks file on disk now contains `"schemaVersion": 2`.
 
@@ -184,17 +199,21 @@ Schema bumped, migration tested, backward compat on-device verified, and no regr
 - [ ] `not implemented` `TaskFile.CURRENT_SCHEMA_VERSION` bumped to 2
 - [ ] `not implemented` `SchemaMigrations.migrateV1toV2` implemented
 - [ ] `not implemented` `TaskFileCodec` verified with `ignoreUnknownKeys = true` and polymorphic module
+- [ ] `not implemented` shared sync compatibility verified (`SyncEnvelope` additive fields tolerated; `ConflictClassifier` updated for new metadata fields)
 - [ ] `not implemented` `SchemaMigrationsV1ToV2Test` written and green
 - [ ] `not implemented` `DueDateResolverTest` written and green (including leap-year and Sunday edge cases)
 - [ ] `not implemented` `TaskFileCodecRoundTripTest` written and green
+- [ ] `not implemented` sync regression tests for metadata-only edits written and green
 - [ ] `not implemented` On-device upgrade test: existing tasks visible after migration, `schemaVersion: 2` on disk
 
 ## Functional Requirements / Key Principles
 
-- Existing tasks survive the v1→v2 migration with no data loss; `name` is seeded from `description.take(80)` when blank.
-- A v1 watch app reading a v2 file does not crash; `ignoreUnknownKeys = true` silently drops unknown fields.
+- Existing tasks survive the v1→v2 migration with no data loss; `name` is seeded from trimmed legacy `description` (with a deterministic fallback if the legacy description is blank).
+- `description` remains the persisted notes field; `name` becomes the primary identifier without duplicating note storage.
+- Older peers tolerate additive `Task` fields in both `TaskFile` and `SyncEnvelope` because unknown fields are ignored during decode.
 - `DueDateResolver` is a pure function with no side effects and no I/O; all timezone calculations use the caller-supplied `ZoneId`.
 - `TaskColor.parse` rejects malformed hex at the boundary and returns `Result.failure`; it never stores a bad value.
 - `schemaVersion` in the on-disk file always equals `TaskFile.CURRENT_SCHEMA_VERSION` after a successful read-modify-write cycle.
+- Shared sync/conflict logic is updated in the same phase as the schema bump so metadata-only edits are never silently lost.
 - Migration is one-directional (v1→v2); there is no downgrade path. Old app versions that cannot parse v2 must be treated as incompatible.
 - `DeadlineReminder.offsetSeconds` is stored as signed seconds from `dueAt`; negative values mean "before due".
