@@ -4,6 +4,8 @@ import android.content.Context
 import android.hardware.SensorEventListener
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -42,8 +44,9 @@ class ShakeDetectorTest {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `shake emitted when magnitude exceeds threshold for required duration`() = runTest {
+    fun `shake emitted when magnitude exceeds threshold for required duration`() = runTest(UnconfinedTestDispatcher()) {
         detector.shakeEvents.test {
             val t0 = 0L
             val t1 = 150_000_000L // 150 ms in ns — exceeds durationMs=100
@@ -66,8 +69,9 @@ class ShakeDetectorTest {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `debounce suppresses second shake within window`() = runTest {
+    fun `debounce suppresses second shake within window`() = runTest(UnconfinedTestDispatcher()) {
         detector.shakeEvents.test {
             triggerShake(listener, startNs = 0L)
             awaitItem() // first shake emitted
@@ -79,8 +83,9 @@ class ShakeDetectorTest {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `second shake allowed after debounce window`() = runTest {
+    fun `second shake allowed after debounce window`() = runTest(UnconfinedTestDispatcher()) {
         detector.shakeEvents.test {
             triggerShake(listener, startNs = 0L)
             awaitItem() // first shake

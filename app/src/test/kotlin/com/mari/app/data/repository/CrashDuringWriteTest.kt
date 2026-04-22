@@ -16,8 +16,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.Instant
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class CrashDuringWriteTest {
 
     private val treeUri: Uri = Uri.parse("content://test/tree")
@@ -45,7 +50,7 @@ class CrashDuringWriteTest {
         val repository = repo(saf, storage)
         repository.onGrantAcquired() // loads corrupt → storageError set, tasks empty
 
-        val task = ExecutionRules.createTask("Recovery task", clock, DeviceId.PHONE, "rec-1")
+        val task = ExecutionRules.createTask("Recovery task", clock, DeviceId.PHONE, id = "rec-1")
         val result = repository.update { current -> current + task }
 
         assertThat(result.isSuccess).isTrue()
@@ -60,7 +65,7 @@ class CrashDuringWriteTest {
         val repository = repo(saf, storage)
         repository.onGrantAcquired()
 
-        val task = ExecutionRules.createTask("Should not persist", clock, DeviceId.PHONE, "fail-1")
+        val task = ExecutionRules.createTask("Should not persist", clock, DeviceId.PHONE, id = "fail-1")
         val result = repository.update { current -> current + task }
 
         assertThat(result.isFailure).isTrue()

@@ -24,11 +24,13 @@ class ShakeDetector @Inject constructor(
     override val shakeEvents: SharedFlow<Unit> = _shakeEvents.asSharedFlow()
 
     private var config = ShakeConfig()
+    private var started = false
     private var aboveThresholdSinceNs: Long? = null
     private var lastShakeNs: Long = 0L
 
     private val listener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
+            if (!started) return
             val x = event.values[0]
             val y = event.values[1]
             val z = event.values[2]
@@ -56,11 +58,14 @@ class ShakeDetector @Inject constructor(
     fun start(shakeConfig: ShakeConfig) {
         config = shakeConfig
         aboveThresholdSinceNs = null
+        lastShakeNs = -(shakeConfig.debounceMs * 1_000_000L)
+        started = true
         val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION) ?: return
         sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
     }
 
     fun stop() {
+        started = false
         sensorManager.unregisterListener(listener)
         aboveThresholdSinceNs = null
     }

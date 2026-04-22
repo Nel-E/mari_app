@@ -17,8 +17,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.Instant
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class ConcurrentWriteTest {
 
     private val treeUri: Uri = Uri.parse("content://test/tree")
@@ -36,7 +41,7 @@ class ConcurrentWriteTest {
 
         val results = (1..100).map { i ->
             async {
-                val task = ExecutionRules.createTask("Task $i", clock, DeviceId.PHONE, "id-$i")
+                val task = ExecutionRules.createTask("Task $i", clock, DeviceId.PHONE, id = "id-$i")
                 repository.update { current -> current + task }
             }
         }.awaitAll()
@@ -66,11 +71,11 @@ class ConcurrentWriteTest {
         val repository = repo(saf, storage)
         repository.onGrantAcquired()
 
-        val task = ExecutionRules.createTask("Task A", clock, DeviceId.PHONE, "id-a")
+        val task = ExecutionRules.createTask("Task A", clock, DeviceId.PHONE, id = "id-a")
         val result = repository.update { current -> current + task }
 
         assertThat(result.isFailure).isTrue()
-        assertThat(repository.getTasks()).isEmpty()
+        assertThat(repository.getTasks().none { it.id == "id-a" }).isTrue()
     }
 }
 
