@@ -3,6 +3,7 @@ package com.mari.app.reminders
 import com.mari.app.data.storage.SafGrant
 import com.mari.app.data.storage.SafSource
 import com.mari.app.data.storage.TaskStorage
+import com.mari.app.settings.SettingsReader
 import com.mari.shared.domain.TaskStatus
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,6 +14,8 @@ class BootRescheduler @Inject constructor(
     private val storage: TaskStorage,
     private val reminderScheduler: ReminderScheduler,
     private val deadlineReminderScheduler: DeadlineReminderScheduler,
+    private val settingsRepository: SettingsReader,
+    private val dailyNudgeScheduler: DailyNudgeScheduler,
 ) {
 
     suspend fun rescheduleAll() {
@@ -30,6 +33,11 @@ class BootRescheduler @Inject constructor(
                 task.dueAt != null &&
                 task.deadlineReminders.isNotEmpty()
         }.forEach(deadlineReminderScheduler::schedule)
+
+        val settings = settingsRepository.current()
+        if (settings.dailyNudgeEnabled) {
+            dailyNudgeScheduler.schedule(settings.dailyNudgeHour, settings.dailyNudgeMinute, settings.quietWindow)
+        }
     }
 
     private companion object {

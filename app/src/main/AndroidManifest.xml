@@ -43,6 +43,14 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".reminders.DailyNudgeReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".reminders.NudgeActionReceiver"
+            android:exported="false" />
+
         <service
             android:name=".sync.PhoneSyncService"
             android:exported="true">

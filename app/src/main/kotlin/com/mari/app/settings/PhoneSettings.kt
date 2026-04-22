@@ -18,6 +18,9 @@ data class PhoneSettings(
     val quietEndHour: Int = 7,
     val quietEndMinute: Int = 0,
     val deadlineReminderTemplates: List<DeadlineReminder> = DEFAULT_DEADLINE_REMINDER_TEMPLATES,
+    val dailyNudgeEnabled: Boolean = false,
+    val dailyNudgeHour: Int = 9,
+    val dailyNudgeMinute: Int = 0,
 ) {
     val shakeConfig: ShakeConfig
         get() = ShakeConfig(

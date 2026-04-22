@@ -1,10 +1,14 @@
 package com.mari.app.reminders
 
+import android.app.AlarmManager
 import android.net.Uri
 import com.google.common.truth.Truth.assertThat
 import com.mari.app.data.storage.SafGrant
 import com.mari.app.data.storage.SafSource
 import com.mari.app.data.storage.TaskStorage
+import com.mari.app.reminders.DailyNudgeScheduler
+import com.mari.app.settings.PhoneSettings
+import com.mari.app.settings.SettingsReader
 import com.mari.shared.data.serialization.FileSettings
 import com.mari.shared.data.serialization.TaskFile
 import com.mari.shared.domain.DeviceId
@@ -12,12 +16,15 @@ import com.mari.shared.domain.ExecutionRules
 import com.mari.shared.domain.FixedClock
 import com.mari.shared.domain.Task
 import com.mari.shared.domain.TaskStatus
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.time.Instant
 
@@ -67,12 +74,19 @@ class BootRescheduleTest {
     private fun rescheduler(
         tasks: List<Task>,
         scheduler: ReminderScheduler,
-    ) = BootRescheduler(
-        safSource = FakeBootSafSource(treeUri),
-        storage = FakeBootStorage(tasks),
-        reminderScheduler = scheduler,
-        deadlineReminderScheduler = NoopDeadlineReminderScheduler(),
-    )
+    ): BootRescheduler {
+        val context = RuntimeEnvironment.getApplication()
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
+        val nudgeScheduler = DailyNudgeScheduler(context, alarmManager, clock)
+        return BootRescheduler(
+            safSource = FakeBootSafSource(treeUri),
+            storage = FakeBootStorage(tasks),
+            reminderScheduler = scheduler,
+            deadlineReminderScheduler = NoopDeadlineReminderScheduler(),
+            settingsRepository = FakeSettingsReader(),
+            dailyNudgeScheduler = nudgeScheduler,
+        )
+    }
 
     private fun task(id: String, status: TaskStatus): Task {
         val base = ExecutionRules.createTask("Task $id", clock, DeviceId.PHONE, id = id)
@@ -110,4 +124,9 @@ private class RecordingReminderScheduler : ReminderScheduler {
 private class NoopDeadlineReminderScheduler : DeadlineReminderScheduler {
     override fun schedule(task: Task) = Unit
     override fun cancel(taskId: String) = Unit
+}
+
+private class FakeSettingsReader : SettingsReader {
+    override val settings: Flow<PhoneSettings> = flowOf(PhoneSettings())
+    override suspend fun current(): PhoneSettings = PhoneSettings()
 }

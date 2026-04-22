@@ -45,6 +45,9 @@ open class SettingsRepository @Inject constructor(
             quietEndHour = prefs[KEY_QUIET_END_HOUR] ?: 7,
             quietEndMinute = prefs[KEY_QUIET_END_MINUTE] ?: 0,
             deadlineReminderTemplates = decodeTemplates(prefs[KEY_DEADLINE_REMINDER_TEMPLATES]),
+            dailyNudgeEnabled = prefs[KEY_DAILY_NUDGE_ENABLED] ?: false,
+            dailyNudgeHour = prefs[KEY_DAILY_NUDGE_HOUR] ?: 9,
+            dailyNudgeMinute = prefs[KEY_DAILY_NUDGE_MINUTE] ?: 0,
         )
     }
 
@@ -108,6 +111,14 @@ open class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun updateDailyNudge(enabled: Boolean, hour: Int, minute: Int) {
+        context.phoneSettingsDataStore.edit {
+            it[KEY_DAILY_NUDGE_ENABLED] = enabled
+            it[KEY_DAILY_NUDGE_HOUR] = hour.coerceIn(0, 23)
+            it[KEY_DAILY_NUDGE_MINUTE] = minute.coerceIn(0, 59)
+        }
+    }
+
     private fun decodeTemplates(raw: String?): List<DeadlineReminder> {
         if (raw.isNullOrBlank()) return PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES
         return runCatching {
@@ -131,5 +142,8 @@ open class SettingsRepository @Inject constructor(
         val KEY_QUIET_END_HOUR = intPreferencesKey("quiet_end_hour")
         val KEY_QUIET_END_MINUTE = intPreferencesKey("quiet_end_minute")
         val KEY_DEADLINE_REMINDER_TEMPLATES = stringPreferencesKey("deadline_reminder_templates")
+        val KEY_DAILY_NUDGE_ENABLED = booleanPreferencesKey("daily_nudge_enabled")
+        val KEY_DAILY_NUDGE_HOUR = intPreferencesKey("daily_nudge_hour")
+        val KEY_DAILY_NUDGE_MINUTE = intPreferencesKey("daily_nudge_minute")
     }
 }

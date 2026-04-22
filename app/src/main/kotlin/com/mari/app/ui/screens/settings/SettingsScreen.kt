@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -23,11 +24,15 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -161,6 +166,15 @@ fun SettingsScreen(
                 },
             )
             HorizontalDivider()
+            SectionTitle("Daily Task Reminder")
+            DailyNudgeSection(
+                enabled = uiState.dailyNudgeEnabled,
+                hour = uiState.dailyNudgeHour,
+                minute = uiState.dailyNudgeMinute,
+                onEnabledChange = viewModel::onDailyNudgeEnabledChange,
+                onTimeChange = viewModel::onDailyNudgeTimeChange,
+            )
+            HorizontalDivider()
             SectionTitle("Weekly Backup")
             ListItem(
                 headlineContent = { Text("Backup Info") },
@@ -199,6 +213,50 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DailyNudgeSection(
+    enabled: Boolean,
+    hour: Int,
+    minute: Int,
+    onEnabledChange: (Boolean) -> Unit,
+    onTimeChange: (Int, Int) -> Unit,
+) {
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    ListItem(
+        headlineContent = { Text("Daily task reminder") },
+        supportingContent = { Text("You'll be nudged once a day to continue or pick a task.") },
+        trailingContent = {
+            Switch(checked = enabled, onCheckedChange = onEnabledChange)
+        },
+    )
+    ListItem(
+        headlineContent = { Text("Reminder time") },
+        supportingContent = { Text("%02d:%02d".format(hour, minute)) },
+        trailingContent = {
+            TextButton(onClick = { showTimePicker = true }) { Text("Change") }
+        },
+    )
+
+    if (showTimePicker) {
+        val state = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = true)
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onTimeChange(state.hour, state.minute)
+                    showTimePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            },
+            text = { TimePicker(state = state) },
+        )
+    }
 }
 
 @Composable

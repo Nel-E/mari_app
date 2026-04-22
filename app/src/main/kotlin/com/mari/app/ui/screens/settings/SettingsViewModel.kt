@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.mari.app.data.repository.FileTaskRepository
 import com.mari.app.data.storage.SafFolderManager
 import com.mari.app.data.storage.SafGrant
+import com.mari.app.reminders.DailyNudgeScheduler
 import com.mari.app.settings.SettingsRepository
 import com.mari.shared.domain.DeadlineReminder
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +36,9 @@ data class SettingsUiState(
     val quietHoursLabel: String = "22:00 - 07:00",
     val deadlineReminderTemplates: List<DeadlineReminder> = emptyList(),
     val backupInfo: BackupInfo = BackupInfo(),
+    val dailyNudgeEnabled: Boolean = false,
+    val dailyNudgeHour: Int = 9,
+    val dailyNudgeMinute: Int = 0,
 )
 
 @HiltViewModel
@@ -42,6 +46,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val safFolderManager: SafFolderManager,
     private val fileTaskRepository: FileTaskRepository,
+    private val dailyNudgeScheduler: DailyNudgeScheduler,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -68,6 +73,9 @@ class SettingsViewModel @Inject constructor(
             ),
             deadlineReminderTemplates = settings.deadlineReminderTemplates,
             backupInfo = backupInfoFor(grant),
+            dailyNudgeEnabled = settings.dailyNudgeEnabled,
+            dailyNudgeHour = settings.dailyNudgeHour,
+            dailyNudgeMinute = settings.dailyNudgeMinute,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -114,6 +122,29 @@ class SettingsViewModel @Inject constructor(
                 endHour = (current.quietEndHour + hoursDelta).floorMod(24),
                 endMinute = current.quietEndMinute,
             )
+        }
+    }
+
+    fun onDailyNudgeEnabledChange(enabled: Boolean) {
+        viewModelScope.launch {
+            val current = settingsRepository.current()
+            settingsRepository.updateDailyNudge(enabled, current.dailyNudgeHour, current.dailyNudgeMinute)
+            if (enabled) {
+                dailyNudgeScheduler.schedule(current.dailyNudgeHour, current.dailyNudgeMinute, current.quietWindow)
+            } else {
+                dailyNudgeScheduler.cancel()
+            }
+        }
+    }
+
+    fun onDailyNudgeTimeChange(hour: Int, minute: Int) {
+        viewModelScope.launch {
+            val current = settingsRepository.current()
+            settingsRepository.updateDailyNudge(current.dailyNudgeEnabled, hour, minute)
+            if (current.dailyNudgeEnabled) {
+                dailyNudgeScheduler.cancel()
+                dailyNudgeScheduler.schedule(hour, minute, current.quietWindow)
+            }
         }
     }
 
