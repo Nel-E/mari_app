@@ -73,7 +73,7 @@ private fun CtaContent(
         when (ctaState) {
             is WearCtaState.MarkExecutingComplete -> {
                 Text(
-                    text = ctaState.task.description,
+                    text = ctaState.task.name,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -140,7 +140,7 @@ private fun PickedTaskContent(
         Text("Picked:", textAlign = TextAlign.Center)
         Spacer(Modifier.height(4.dp))
         Text(
-            text = task.description,
+            text = task.name,
             textAlign = TextAlign.Center,
             maxLines = 2,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -173,14 +173,14 @@ private fun ConflictContent(
     ) {
         Text("Executing:", textAlign = TextAlign.Center)
         Text(
-            text = conflict.existing.description,
+            text = conflict.existing.name,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
         Spacer(Modifier.height(4.dp))
         Text("New pick:", textAlign = TextAlign.Center)
         Text(
-            text = conflict.incoming.description,
+            text = conflict.incoming.name,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )

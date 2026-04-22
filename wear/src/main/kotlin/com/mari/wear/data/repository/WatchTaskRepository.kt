@@ -7,6 +7,7 @@ import com.mari.shared.domain.DeviceId
 import com.mari.shared.domain.Seeding
 import com.mari.shared.domain.SystemClock
 import com.mari.shared.domain.Task
+import com.mari.shared.domain.TaskValidation
 import com.mari.wear.data.cache.TaskCacheStorage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,7 @@ class WatchTaskRepository @Inject constructor(
         mutex.withLock {
             val newTasks = transform(_tasks.value)
             val seeded = Seeding.ensureSeedTask(newTasks, SystemClock, DeviceId.WATCH)
+            TaskValidation.requireUniqueNames(seeded).getOrElse { return Result.failure(it) }
             val current = storage.load()
                 .getOrElse { TaskFile(tasks = seeded, settings = FileSettings(deviceId = "watch")) }
                 .copy(tasks = seeded)

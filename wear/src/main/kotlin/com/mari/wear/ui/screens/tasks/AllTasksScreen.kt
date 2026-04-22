@@ -50,7 +50,7 @@ private fun TaskListContent(
         }
         items(tasks) { task ->
             Chip(
-                label = { Text(task.description, maxLines = 2) },
+                label = { Text(task.name, maxLines = 2) },
                 secondaryLabel = { Text(task.status.name.lowercase().replace('_', ' ')) },
                 onClick = { onTaskClick(task) },
                 colors = ChipDefaults.secondaryChipColors(),
@@ -68,7 +68,7 @@ private fun TaskActionsContent(
     onDismiss: () -> Unit,
 ) {
     ScalingLazyColumn(modifier = Modifier.fillMaxSize()) {
-        item { Text(task.description, maxLines = 2) }
+        item { Text(task.name, maxLines = 2) }
         item {
             Chip(
                 label = { Text("Execute") },

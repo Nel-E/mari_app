@@ -6,6 +6,7 @@ import java.time.Instant
 @Serializable
 data class Task(
     val id: String,
+    val name: String = "",
     val description: String,
     val status: TaskStatus,
     @Serializable(with = InstantSerializer::class)
@@ -16,6 +17,11 @@ data class Task(
     val executionStartedAt: Instant? = null,
     @Serializable(with = InstantSerializer::class)
     val deletedAt: Instant? = null,
+    @Serializable(with = InstantSerializer::class)
+    val dueAt: Instant? = null,
+    val dueKind: DueKind? = null,
+    val deadlineReminders: List<DeadlineReminder> = emptyList(),
+    val colorHex: String? = null,
     val version: Int = 1,
     val lastModifiedBy: DeviceId,
 )

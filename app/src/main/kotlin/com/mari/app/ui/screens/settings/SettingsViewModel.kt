@@ -9,6 +9,7 @@ import com.mari.app.data.repository.FileTaskRepository
 import com.mari.app.data.storage.SafFolderManager
 import com.mari.app.data.storage.SafGrant
 import com.mari.app.settings.SettingsRepository
+import com.mari.shared.domain.DeadlineReminder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.DayOfWeek
@@ -32,6 +33,7 @@ data class SettingsUiState(
     val reminderIntervalMinutes: Int = 30,
     val reminderVibrate: Boolean = true,
     val quietHoursLabel: String = "22:00 - 07:00",
+    val deadlineReminderTemplates: List<DeadlineReminder> = emptyList(),
     val backupInfo: BackupInfo = BackupInfo(),
 )
 
@@ -64,6 +66,7 @@ class SettingsViewModel @Inject constructor(
                 settings.quietEndHour,
                 settings.quietEndMinute,
             ),
+            deadlineReminderTemplates = settings.deadlineReminderTemplates,
             backupInfo = backupInfoFor(grant),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
@@ -90,6 +93,16 @@ class SettingsViewModel @Inject constructor(
 
     fun onReminderVibrateChange(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.updateReminderVibrate(enabled) }
+    }
+
+    fun shiftDeadlineTemplate(index: Int, deltaSeconds: Long) {
+        viewModelScope.launch {
+            val current = settingsRepository.current().deadlineReminderTemplates.toMutableList()
+            if (index !in current.indices) return@launch
+            val item = current[index]
+            current[index] = item.copy(offsetSeconds = item.offsetSeconds + deltaSeconds)
+            settingsRepository.updateDeadlineReminderTemplates(current)
+        }
     }
 
     fun shiftQuietHours(hoursDelta: Int) {

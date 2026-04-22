@@ -26,8 +26,8 @@ fun ConflictResolutionDialog(
         title = { Text("Sync conflict") },
         text = {
             Column {
-                Text("Phone: ${local.description} (${local.status.name.lowercase()})")
-                Text("Watch: ${incoming.description} (${incoming.status.name.lowercase()})")
+                Text("Phone: ${local.name} (${local.status.name.lowercase()})")
+                Text("Watch: ${incoming.name} (${incoming.status.name.lowercase()})")
                 HorizontalDivider(
                     modifier = Modifier
                         .fillMaxWidth()

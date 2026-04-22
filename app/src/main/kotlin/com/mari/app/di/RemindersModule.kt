@@ -4,6 +4,8 @@ import android.app.AlarmManager
 import android.content.Context
 import androidx.work.WorkManager
 import com.mari.app.reminders.AlarmReminderScheduler
+import com.mari.app.reminders.AlarmDeadlineReminderScheduler
+import com.mari.app.reminders.DeadlineReminderScheduler
 import com.mari.app.reminders.ReminderRouter
 import com.mari.app.reminders.ReminderScheduler
 import com.mari.app.reminders.WorkManagerReminderScheduler
@@ -36,6 +38,10 @@ abstract class RemindersModule {
     @Singleton
     @AlarmScheduler
     abstract fun bindAlarmScheduler(impl: AlarmReminderScheduler): ReminderScheduler
+
+    @Binds
+    @Singleton
+    abstract fun bindDeadlineReminderScheduler(impl: AlarmDeadlineReminderScheduler): DeadlineReminderScheduler
 
     @Binds
     @Singleton

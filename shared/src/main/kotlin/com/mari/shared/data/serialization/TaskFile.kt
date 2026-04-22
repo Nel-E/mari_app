@@ -10,7 +10,7 @@ data class TaskFile(
     val settings: FileSettings = FileSettings(),
 ) {
     companion object {
-        const val CURRENT_SCHEMA_VERSION = 1
+        const val CURRENT_SCHEMA_VERSION = 2
     }
 }
 

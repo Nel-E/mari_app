@@ -10,6 +10,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
+import com.mari.shared.domain.DeadlineReminder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -20,6 +23,8 @@ private val Context.phoneSettingsDataStore by preferencesDataStore(name = "phone
 class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
+
     val settings: Flow<PhoneSettings> = context.phoneSettingsDataStore.data.map { prefs ->
         PhoneSettings(
             shakeStrength = prefs[KEY_SHAKE_STRENGTH] ?: 15f,
@@ -34,6 +39,7 @@ class SettingsRepository @Inject constructor(
             quietStartMinute = prefs[KEY_QUIET_START_MINUTE] ?: 0,
             quietEndHour = prefs[KEY_QUIET_END_HOUR] ?: 7,
             quietEndMinute = prefs[KEY_QUIET_END_MINUTE] ?: 0,
+            deadlineReminderTemplates = decodeTemplates(prefs[KEY_DEADLINE_REMINDER_TEMPLATES]),
         )
     }
 
@@ -89,7 +95,24 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun updateDeadlineReminderTemplates(templates: List<DeadlineReminder>) {
+        val normalized = templates.take(MAX_DEADLINE_TEMPLATES)
+        context.phoneSettingsDataStore.edit { prefs ->
+            prefs[KEY_DEADLINE_REMINDER_TEMPLATES] =
+                json.encodeToString(ListSerializer(DeadlineReminder.serializer()), normalized)
+        }
+    }
+
+    private fun decodeTemplates(raw: String?): List<DeadlineReminder> {
+        if (raw.isNullOrBlank()) return PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES
+        return runCatching {
+            json.decodeFromString(ListSerializer(DeadlineReminder.serializer()), raw)
+                .take(MAX_DEADLINE_TEMPLATES)
+        }.getOrDefault(PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES)
+    }
+
     private companion object {
+        const val MAX_DEADLINE_TEMPLATES = 4
         val KEY_SHAKE_STRENGTH = floatPreferencesKey("shake_strength")
         val KEY_SHAKE_DURATION_MS = intPreferencesKey("shake_duration_ms")
         val KEY_SHAKE_SOUND_URI = stringPreferencesKey("shake_sound_uri")
@@ -102,5 +125,6 @@ class SettingsRepository @Inject constructor(
         val KEY_QUIET_START_MINUTE = intPreferencesKey("quiet_start_minute")
         val KEY_QUIET_END_HOUR = intPreferencesKey("quiet_end_hour")
         val KEY_QUIET_END_MINUTE = intPreferencesKey("quiet_end_minute")
+        val KEY_DEADLINE_REMINDER_TEMPLATES = stringPreferencesKey("deadline_reminder_templates")
     }
 }

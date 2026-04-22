@@ -10,6 +10,7 @@ import com.mari.shared.domain.DeviceId
 import com.mari.shared.domain.Seeding
 import com.mari.shared.domain.SystemClock
 import com.mari.shared.domain.Task
+import com.mari.shared.domain.TaskValidation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +39,7 @@ class FileTaskRepository @Inject constructor(
 
             val newTasks = transform(_tasks.value)
             val seeded = Seeding.ensureSeedTask(newTasks, SystemClock, DeviceId.PHONE)
+            TaskValidation.requireUniqueNames(seeded).getOrElse { return Result.failure(it) }
             val current = storage.load(grant.treeUri)
                 .getOrElse { TaskFile(tasks = seeded) }
                 .copy(tasks = seeded)

@@ -1,15 +1,23 @@
 package com.mari.app.ui.screens.add
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -20,11 +28,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mari.shared.domain.DuePreset
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddTaskScreen(
     onNavigateUp: () -> Unit,
@@ -52,26 +62,130 @@ fun AddTaskScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
             OutlinedTextField(
+                value = uiState.name,
+                onValueChange = viewModel::onNameChange,
+                label = { Text("Task name") },
+                isError = uiState.nameError != null,
+                supportingText = uiState.nameError?.let { { Text(it) } },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
                 value = uiState.description,
                 onValueChange = viewModel::onDescriptionChange,
-                label = { Text("Task description") },
+                label = { Text("Notes") },
                 isError = uiState.descriptionError != null,
                 supportingText = uiState.descriptionError?.let { { Text(it) } },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = false,
                 minLines = 3,
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Deadline")
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = uiState.duePreset == null,
+                    onClick = { viewModel.onDuePresetChange(null) },
+                    label = { Text("None") },
+                )
+                DuePreset.entries.forEach { preset ->
+                    FilterChip(
+                        selected = uiState.duePreset == preset,
+                        onClick = { viewModel.onDuePresetChange(preset) },
+                        label = { Text(preset.label()) },
+                    )
+                }
+            }
+            if (uiState.duePreset == DuePreset.SPECIFIC_DAY) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.dueDateText,
+                    onValueChange = viewModel::onDueDateChange,
+                    label = { Text("Date (YYYY-MM-DD)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.dueTimeText,
+                    onValueChange = viewModel::onDueTimeChange,
+                    label = { Text("Time (HH:MM, optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+            }
+            if (uiState.duePreset == DuePreset.MONTH_YEAR) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = uiState.dueMonthText,
+                        onValueChange = viewModel::onDueMonthChange,
+                        label = { Text("Month") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = uiState.dueYearText,
+                        onValueChange = viewModel::onDueYearChange,
+                        label = { Text("Year") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                    )
+                }
+            }
+            uiState.duePreview?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Due: $it")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = uiState.colorHex,
+                onValueChange = viewModel::onColorChange,
+                label = { Text("Color hex") },
+                placeholder = { Text("#FF8A65") },
+                isError = uiState.colorError != null,
+                supportingText = uiState.colorError?.let { { Text(it) } },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Reminder templates")
+            Spacer(modifier = Modifier.height(8.dp))
+            uiState.reminderTemplates.forEach { reminder ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = reminder.offsetSeconds in uiState.selectedReminderOffsets,
+                        onCheckedChange = { checked -> viewModel.onReminderToggle(reminder.offsetSeconds, checked) },
+                    )
+                    Text(reminder.label.ifBlank { "${reminder.offsetSeconds}s" })
+                }
+            }
+            uiState.formError?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(it)
+            }
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = viewModel::save,
                 enabled = !uiState.isSaving,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (uiState.isSaving) "Saving…" else "Save Task")
+                Text(if (uiState.isSaving) "Saving..." else "Save Task")
             }
         }
     }
+}
+
+private fun DuePreset.label(): String = when (this) {
+    DuePreset.SPECIFIC_DAY -> "Specific day"
+    DuePreset.THIS_WEEK -> "This week"
+    DuePreset.NEXT_WEEK -> "Next week"
+    DuePreset.THIS_MONTH -> "This month"
+    DuePreset.NEXT_MONTH -> "Next month"
+    DuePreset.MONTH_YEAR -> "Month + year"
 }

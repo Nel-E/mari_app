@@ -35,7 +35,7 @@ class ExecutingStatusObserver @Inject constructor(
                         reminderScheduler.schedule(
                             executingTask.id,
                             settings.reminderIntervalMinutes * 60_000L,
-                            executingTask.description,
+                            executingTask.name,
                         )
                         scheduledTaskId = executingTask.id
                     }

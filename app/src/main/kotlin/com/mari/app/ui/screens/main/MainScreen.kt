@@ -85,7 +85,7 @@ fun MainScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = cta.task.description,
+                        text = cta.task.name,
                         style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     )
@@ -129,7 +129,7 @@ fun MainScreen(
         if (executingTask != null) {
             val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             ExecutingBottomSheet(
-                taskDescription = executingTask.description,
+                taskDescription = executingTask.name,
                 sheetState = sheetState,
                 onComplete = viewModel::completeExecutingTask,
                 onPause = viewModel::pauseExecutingTask,
@@ -141,7 +141,7 @@ fun MainScreen(
 
     uiState.pickedTask?.let { task ->
         PickedTaskDialog(
-            description = task.description,
+            description = task.name,
             onStart = viewModel::onStartPicked,
             onReroll = viewModel::onRerollPicked,
             onCancel = viewModel::onDismissPicked,
@@ -150,7 +150,7 @@ fun MainScreen(
 
     uiState.shakeConflict?.let { conflict ->
         ExecutingConflictDialog(
-            executingDescription = conflict.existing.description,
+            executingDescription = conflict.existing.name,
             onFinish = viewModel::onShakeConflictFinish,
             onPause = viewModel::onShakeConflictPause,
             onCancel = viewModel::onDismissShakeConflict,

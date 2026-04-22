@@ -22,38 +22,86 @@ object ExecutionRules {
             task.status == TaskStatus.EXECUTING -> null
             else -> task.executionStartedAt
         }
-        return task.copy(
-            status = newStatus,
-            executionStartedAt = executionStartedAt,
-            updatedAt = now,
-            version = task.version + 1,
-            lastModifiedBy = deviceId,
+        return touchTask(
+            task.copy(
+                status = newStatus,
+                executionStartedAt = executionStartedAt,
+            ),
+            clock,
+            deviceId,
         )
     }
 
-    fun createTask(
-        description: String,
+    fun updateTaskMetadata(
+        task: Task,
         clock: Clock,
         deviceId: DeviceId,
+        name: String,
+        description: String = task.description,
+        dueAt: java.time.Instant? = task.dueAt,
+        dueKind: DueKind? = task.dueKind,
+        deadlineReminders: List<DeadlineReminder> = task.deadlineReminders,
+        colorHex: String? = task.colorHex,
+    ): Task = touchTask(
+        task.copy(
+            name = name,
+            description = description,
+            dueAt = dueAt,
+            dueKind = dueKind,
+            deadlineReminders = deadlineReminders,
+            colorHex = colorHex,
+        ),
+        clock,
+        deviceId,
+    )
+
+    fun createTask(
+        name: String,
+        clock: Clock,
+        deviceId: DeviceId,
+        description: String = "",
+        dueAt: java.time.Instant? = null,
+        dueKind: DueKind? = null,
+        deadlineReminders: List<DeadlineReminder> = emptyList(),
+        colorHex: String? = null,
         id: String = UUID.randomUUID().toString(),
     ): Task {
         val now = clock.nowUtc()
         return Task(
             id = id,
+            name = name,
             description = description,
             status = TaskStatus.TO_BE_DONE,
             createdAt = now,
             updatedAt = now,
+            dueAt = dueAt,
+            dueKind = dueKind,
+            deadlineReminders = deadlineReminders,
+            colorHex = colorHex,
             lastModifiedBy = deviceId,
         )
     }
 
     fun softDelete(task: Task, clock: Clock, deviceId: DeviceId): Task {
+        val deletedTask = if (task.status == TaskStatus.EXECUTING) {
+            task.copy(
+                deletedAt = clock.nowUtc(),
+                executionStartedAt = null,
+                status = TaskStatus.DISCARDED,
+            )
+        } else {
+            task.copy(deletedAt = clock.nowUtc())
+        }
+        return touchTask(deletedTask, clock, deviceId)
+    }
+
+    private fun touchTask(
+        task: Task,
+        clock: Clock,
+        deviceId: DeviceId,
+    ): Task {
         val now = clock.nowUtc()
         return task.copy(
-            deletedAt = now,
-            executionStartedAt = if (task.status == TaskStatus.EXECUTING) null else task.executionStartedAt,
-            status = if (task.status == TaskStatus.EXECUTING) TaskStatus.DISCARDED else task.status,
             updatedAt = now,
             version = task.version + 1,
             lastModifiedBy = deviceId,

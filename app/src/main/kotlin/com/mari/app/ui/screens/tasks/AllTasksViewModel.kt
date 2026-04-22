@@ -2,14 +2,21 @@ package com.mari.app.ui.screens.tasks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mari.app.reminders.DeadlineReminderScheduler
+import com.mari.app.settings.SettingsRepository
 import com.mari.shared.data.repository.TaskRepository
 import com.mari.shared.domain.Clock
+import com.mari.shared.domain.DeadlineReminder
 import com.mari.shared.domain.DeviceId
+import com.mari.shared.domain.DueKind
 import com.mari.shared.domain.ExecutionRules
 import com.mari.shared.domain.Task
 import com.mari.shared.domain.TaskListing
 import com.mari.shared.domain.TaskStatus
+import com.mari.shared.domain.TaskValidation
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +24,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class AllTasksUiState(
     val tasks: List<Task> = emptyList(),
@@ -35,6 +41,8 @@ data class ExecutingConflict(
 @HiltViewModel
 class AllTasksViewModel @Inject constructor(
     private val repository: TaskRepository,
+    settingsRepository: SettingsRepository,
+    private val deadlineReminderScheduler: DeadlineReminderScheduler,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -42,6 +50,9 @@ class AllTasksViewModel @Inject constructor(
     private val _selectedTask = MutableStateFlow<Task?>(null)
     private val _pendingDeleteTask = MutableStateFlow<Task?>(null)
     private val _executingConflict = MutableStateFlow<ExecutingConflict?>(null)
+    private val _reminderTemplates = MutableStateFlow(com.mari.app.settings.PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES)
+
+    val reminderTemplates: StateFlow<List<DeadlineReminder>> = _reminderTemplates
 
     val uiState: StateFlow<AllTasksUiState> = combine(
         repository.observeTasks(),
@@ -50,24 +61,18 @@ class AllTasksViewModel @Inject constructor(
         _pendingDeleteTask,
         _executingConflict,
     ) { tasks, filterState, selectedTask, pendingDeleteTask, executingConflict ->
-        val filtered = TaskListing.filter(
-            tasks = tasks,
-            selectedStatuses = filterState.selectedStatuses,
-            query = filterState.query,
-        )
+        val filtered = TaskListing.filter(tasks, filterState.selectedStatuses, filterState.query)
         val sorted = TaskListing.sort(filtered, filterState.sortMode.shared)
-        AllTasksUiState(
-            tasks = sorted,
-            filterState = filterState,
-            selectedTask = selectedTask,
-            pendingDeleteTask = pendingDeleteTask,
-            executingConflict = executingConflict,
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = AllTasksUiState(),
-    )
+        AllTasksUiState(sorted, filterState, selectedTask, pendingDeleteTask, executingConflict)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AllTasksUiState())
+
+    init {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                _reminderTemplates.value = settings.deadlineReminderTemplates
+            }
+        }
+    }
 
     fun onQueryChange(query: String) {
         _filterState.update { it.copy(query = query) }
@@ -75,11 +80,7 @@ class AllTasksViewModel @Inject constructor(
 
     fun onStatusToggle(status: TaskStatus) {
         _filterState.update { state ->
-            val updated = if (status in state.selectedStatuses) {
-                state.selectedStatuses - status
-            } else {
-                state.selectedStatuses + status
-            }
+            val updated = if (status in state.selectedStatuses) state.selectedStatuses - status else state.selectedStatuses + status
             state.copy(selectedStatuses = updated)
         }
     }
@@ -96,40 +97,61 @@ class AllTasksViewModel @Inject constructor(
         _selectedTask.value = null
     }
 
-    fun onSaveEdit(taskId: String, description: String, newStatus: TaskStatus) {
+    fun onSaveEdit(
+        taskId: String,
+        name: String,
+        description: String,
+        newStatus: TaskStatus,
+        dueAt: Instant?,
+        dueKind: DueKind?,
+        reminders: List<DeadlineReminder>,
+        colorHex: String?,
+    ) {
         _selectedTask.value = null
         viewModelScope.launch {
+            if (TaskValidation.findDuplicateName(repository.getTasks(), name, excludeId = taskId) != null) return@launch
+            val currentTasks = repository.getTasks()
             if (newStatus == TaskStatus.EXECUTING) {
-                val currentTasks = repository.getTasks()
                 val existing = ExecutionRules.currentlyExecuting(currentTasks)
                 if (existing != null && existing.id != taskId) {
-                    repository.update { tasks ->
-                        tasks.map { task ->
-                            if (task.id == taskId) {
-                                ExecutionRules.applyStatusChange(
-                                    task = task.copy(description = description),
-                                    newStatus = task.status,
-                                    clock = clock,
-                                    deviceId = DeviceId.PHONE,
-                                )
-                            } else task
-                        }
-                    }
-                    val snapshot = currentTasks.first { it.id == taskId }.copy(description = description)
-                    _executingConflict.value = ExecutingConflict(existing = existing, incoming = snapshot)
+                    _executingConflict.value = ExecutingConflict(
+                        existing = existing,
+                        incoming = currentTasks.first { it.id == taskId }.copy(
+                            name = name,
+                            description = description,
+                            dueAt = dueAt,
+                            dueKind = dueKind,
+                            deadlineReminders = reminders,
+                            colorHex = colorHex,
+                        ),
+                    )
                     return@launch
                 }
             }
-            repository.update { tasks ->
+
+            val result = repository.update { tasks ->
                 tasks.map { task ->
-                    if (task.id != taskId) return@map task
-                    ExecutionRules.applyStatusChange(
-                        task = task.copy(description = description),
+                    if (task.id != taskId) task else ExecutionRules.applyStatusChange(
+                        task = ExecutionRules.updateTaskMetadata(
+                            task = task,
+                            clock = clock,
+                            deviceId = DeviceId.PHONE,
+                            name = name,
+                            description = description,
+                            dueAt = dueAt,
+                            dueKind = dueKind,
+                            deadlineReminders = reminders,
+                            colorHex = colorHex,
+                        ).copy(version = task.version, updatedAt = task.updatedAt, lastModifiedBy = task.lastModifiedBy),
                         newStatus = newStatus,
                         clock = clock,
                         deviceId = DeviceId.PHONE,
                     )
                 }
+            }
+            if (result.isSuccess) {
+                deadlineReminderScheduler.cancel(taskId)
+                repository.getTasks().firstOrNull { it.id == taskId }?.takeIf { it.dueAt != null }?.let(deadlineReminderScheduler::schedule)
             }
         }
     }
@@ -148,10 +170,9 @@ class AllTasksViewModel @Inject constructor(
         _pendingDeleteTask.value = null
         viewModelScope.launch {
             repository.update { tasks ->
-                tasks.map { t ->
-                    if (t.id == task.id) ExecutionRules.softDelete(t, clock, DeviceId.PHONE) else t
-                }
+                tasks.map { t -> if (t.id == task.id) ExecutionRules.softDelete(t, clock, DeviceId.PHONE) else t }
             }
+            deadlineReminderScheduler.cancel(task.id)
         }
     }
 
@@ -160,30 +181,22 @@ class AllTasksViewModel @Inject constructor(
     }
 
     fun onConflictFinish() {
-        val conflict = _executingConflict.value ?: return
-        _executingConflict.value = null
-        viewModelScope.launch {
-            repository.update { tasks ->
-                tasks.map { task ->
-                    when (task.id) {
-                        conflict.existing.id -> ExecutionRules.applyStatusChange(task, TaskStatus.COMPLETED, clock, DeviceId.PHONE)
-                        conflict.incoming.id -> ExecutionRules.applyStatusChange(task, TaskStatus.EXECUTING, clock, DeviceId.PHONE)
-                        else -> task
-                    }
-                }
-            }
-        }
+        resolveConflict(TaskStatus.COMPLETED)
     }
 
     fun onConflictPause() {
+        resolveConflict(TaskStatus.PAUSED)
+    }
+
+    private fun resolveConflict(existingStatus: TaskStatus) {
         val conflict = _executingConflict.value ?: return
         _executingConflict.value = null
         viewModelScope.launch {
             repository.update { tasks ->
                 tasks.map { task ->
                     when (task.id) {
-                        conflict.existing.id -> ExecutionRules.applyStatusChange(task, TaskStatus.PAUSED, clock, DeviceId.PHONE)
-                        conflict.incoming.id -> ExecutionRules.applyStatusChange(task, TaskStatus.EXECUTING, clock, DeviceId.PHONE)
+                        conflict.existing.id -> ExecutionRules.applyStatusChange(task, existingStatus, clock, DeviceId.PHONE)
+                        conflict.incoming.id -> ExecutionRules.applyStatusChange(conflict.incoming.copy(version = task.version, updatedAt = task.updatedAt, lastModifiedBy = task.lastModifiedBy), TaskStatus.EXECUTING, clock, DeviceId.PHONE)
                         else -> task
                     }
                 }

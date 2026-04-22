@@ -34,6 +34,7 @@ fun AllTasksScreen(
     viewModel: AllTasksViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val reminderTemplates by viewModel.reminderTemplates.collectAsState()
 
     Scaffold(
         topBar = {
@@ -45,10 +46,7 @@ fun AllTasksScreen(
                     }
                 },
                 actions = {
-                    SortMenu(
-                        currentMode = uiState.filterState.sortMode,
-                        onSelect = viewModel::onSortModeChange,
-                    )
+                    SortMenu(currentMode = uiState.filterState.sortMode, onSelect = viewModel::onSortModeChange)
                 },
             )
         },
@@ -58,24 +56,14 @@ fun AllTasksScreen(
             }
         },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-            TaskSearchBar(
-                query = uiState.filterState.query,
-                onQueryChange = viewModel::onQueryChange,
-            )
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            TaskSearchBar(query = uiState.filterState.query, onQueryChange = viewModel::onQueryChange)
             FilterChipsRow(
                 selectedStatuses = uiState.filterState.selectedStatuses,
                 onToggle = viewModel::onStatusToggle,
             )
             if (uiState.tasks.isEmpty()) {
-                EmptyState(
-                    title = "No tasks",
-                    subtitle = "Add a task or adjust your filters",
-                )
+                EmptyState(title = "No tasks", subtitle = "Add a task or adjust your filters")
             } else {
                 LazyColumn {
                     items(uiState.tasks, key = { it.id }) { task ->
@@ -91,7 +79,10 @@ fun AllTasksScreen(
         EditTaskSheet(
             task = task,
             sheetState = sheetState,
-            onSave = { desc, status -> viewModel.onSaveEdit(task.id, desc, status) },
+            reminderTemplates = reminderTemplates,
+            onSave = { name, desc, status, dueAt, dueKind, reminders, colorHex ->
+                viewModel.onSaveEdit(task.id, name, desc, status, dueAt, dueKind, reminders, colorHex)
+            },
             onDelete = { viewModel.onRequestDelete(task) },
             onDismiss = viewModel::onDismissEdit,
         )
@@ -99,7 +90,7 @@ fun AllTasksScreen(
 
     uiState.pendingDeleteTask?.let { task ->
         DeleteConfirmDialog(
-            taskDescription = task.description,
+            taskDescription = task.name,
             onConfirm = viewModel::onConfirmDelete,
             onDismiss = viewModel::onDismissDelete,
         )
@@ -107,7 +98,7 @@ fun AllTasksScreen(
 
     uiState.executingConflict?.let { conflict ->
         ExecutingConflictDialog(
-            executingDescription = conflict.existing.description,
+            executingDescription = conflict.existing.name,
             onFinish = viewModel::onConflictFinish,
             onPause = viewModel::onConflictPause,
             onCancel = viewModel::onDismissConflict,

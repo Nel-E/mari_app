@@ -132,6 +132,19 @@ fun SettingsScreen(
                     )
                 },
             )
+            SectionTitle("Deadline Reminder Templates")
+            uiState.deadlineReminderTemplates.forEachIndexed { index, template ->
+                ListItem(
+                    headlineContent = { Text(template.label.ifBlank { "Template ${index + 1}" }) },
+                    supportingContent = { Text("${template.offsetSeconds / 60} min from due time") },
+                    trailingContent = {
+                        Row {
+                            TextButton(onClick = { viewModel.shiftDeadlineTemplate(index, -3600) }) { Text("-1h") }
+                            TextButton(onClick = { viewModel.shiftDeadlineTemplate(index, 3600) }) { Text("+1h") }
+                        }
+                    },
+                )
+            }
             ListItem(
                 headlineContent = { Text("Quiet hours") },
                 supportingContent = {

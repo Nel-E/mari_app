@@ -1,6 +1,6 @@
 package com.mari.shared.domain
 
-private const val SEED_DESCRIPTION = "New Task"
+private const val SEED_NAME = "New Task"
 
 object Seeding {
 
@@ -10,7 +10,7 @@ object Seeding {
             tasks
         } else {
             tasks + ExecutionRules.createTask(
-                description = SEED_DESCRIPTION,
+                name = SEED_NAME,
                 clock = clock,
                 deviceId = deviceId,
             )

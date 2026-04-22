@@ -7,7 +7,10 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Instant
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,6 +43,28 @@ class ReminderNotifier @Inject constructor(
             .build()
 
         notificationManager.notify(taskId.hashCode(), notification)
+    }
+
+    fun notifyDeadline(
+        taskId: String,
+        title: String,
+        taskName: String,
+        dueAt: Instant,
+        quietWindow: QuietWindow? = null,
+    ) {
+        if (isDndActive()) return
+        if (quietWindow != null && QuietHours.isSuppressed(LocalTime.now(), quietWindow)) return
+
+        val formatter = DateTimeFormatter.ofPattern("MMM d, HH:mm").withZone(ZoneId.systemDefault())
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText("$taskName - due ${formatter.format(dueAt)}")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(("deadline:$taskId").hashCode(), notification)
     }
 
     private fun isDndActive(): Boolean {
