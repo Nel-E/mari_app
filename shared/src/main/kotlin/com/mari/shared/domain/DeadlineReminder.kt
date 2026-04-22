@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DeadlineReminder(
     val offsetSeconds: Long,
-    val label: String = "",
+    val label: String? = null,
 )

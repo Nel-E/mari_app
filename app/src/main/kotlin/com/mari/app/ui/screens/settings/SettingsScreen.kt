@@ -135,7 +135,7 @@ fun SettingsScreen(
             SectionTitle("Deadline Reminder Templates")
             uiState.deadlineReminderTemplates.forEachIndexed { index, template ->
                 ListItem(
-                    headlineContent = { Text(template.label.ifBlank { "Template ${index + 1}" }) },
+                    headlineContent = { Text(template.label?.ifBlank { "Template ${index + 1}" } ?: "Template ${index + 1}") },
                     supportingContent = { Text("${template.offsetSeconds / 60} min from due time") },
                     trailingContent = {
                         Row {

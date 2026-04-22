@@ -62,7 +62,7 @@ class AlarmDeadlineReminderScheduler @Inject constructor(
         taskName: String,
         dueAt: Instant,
         offsetSeconds: Long,
-        label: String,
+        label: String?,
     ): PendingIntent {
         val intent = Intent(context, DeadlineReminderReceiver::class.java).apply {
             putExtra(DeadlineReminderReceiver.EXTRA_TASK_ID, taskId)

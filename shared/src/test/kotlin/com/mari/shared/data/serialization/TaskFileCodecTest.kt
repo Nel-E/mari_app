@@ -1,7 +1,9 @@
 package com.mari.shared.data.serialization
 
 import com.google.common.truth.Truth.assertThat
+import com.mari.shared.domain.DeadlineReminder
 import com.mari.shared.domain.DeviceId
+import com.mari.shared.domain.DueKind
 import com.mari.shared.domain.FixedClock
 import com.mari.shared.domain.Task
 import com.mari.shared.domain.TaskStatus
@@ -73,5 +75,45 @@ class TaskFileCodecTest {
         val decoded = TaskFileCodec.decode(TaskFileCodec.encode(file))
         assertThat(decoded.getOrNull()?.tasks?.first()?.executionStartedAt).isNull()
         assertThat(decoded.getOrNull()?.tasks?.first()?.deletedAt).isNull()
+    }
+
+    @Test
+    fun `DueKind SpecificDay round-trips via polymorphic serialization`() {
+        val kind = DueKind.SpecificDay(dateIso = "2026-06-15", timeHhmm = "14:30")
+        val task = makeTask("due1").copy(dueKind = kind)
+        val file = TaskFile(tasks = listOf(task))
+        val decoded = TaskFileCodec.decode(TaskFileCodec.encode(file))
+        assertThat(decoded.getOrNull()?.tasks?.first()?.dueKind).isEqualTo(kind)
+    }
+
+    @Test
+    fun `DueKind ThisWeek round-trips via polymorphic serialization`() {
+        val task = makeTask("due2").copy(dueKind = DueKind.ThisWeek)
+        val decoded = TaskFileCodec.decode(TaskFileCodec.encode(TaskFile(tasks = listOf(task))))
+        assertThat(decoded.getOrNull()?.tasks?.first()?.dueKind).isEqualTo(DueKind.ThisWeek)
+    }
+
+    @Test
+    fun `DueKind MonthYear round-trips via polymorphic serialization`() {
+        val kind = DueKind.MonthYear(month = 3, year = 2027)
+        val task = makeTask("due3").copy(dueKind = kind)
+        val decoded = TaskFileCodec.decode(TaskFileCodec.encode(TaskFile(tasks = listOf(task))))
+        assertThat(decoded.getOrNull()?.tasks?.first()?.dueKind).isEqualTo(kind)
+    }
+
+    @Test
+    fun `encoded DueKind uses _type discriminator`() {
+        val task = makeTask("due4").copy(dueKind = DueKind.ThisMonth)
+        val json = TaskFileCodec.encode(TaskFile(tasks = listOf(task)))
+        assertThat(json).contains("\"_type\"")
+        assertThat(json).contains("this_month")
+    }
+
+    @Test
+    fun `DeadlineReminder with null label round-trips`() {
+        val reminder = DeadlineReminder(offsetSeconds = -3600L, label = null)
+        val task = makeTask("r1").copy(deadlineReminders = listOf(reminder))
+        val decoded = TaskFileCodec.decode(TaskFileCodec.encode(TaskFile(tasks = listOf(task))))
+        assertThat(decoded.getOrNull()?.tasks?.first()?.deadlineReminders?.first()?.label).isNull()
     }
 }

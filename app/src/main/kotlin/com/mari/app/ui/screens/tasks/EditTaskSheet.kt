@@ -34,9 +34,10 @@ import com.mari.shared.domain.DuePreset
 import com.mari.shared.domain.Task
 import com.mari.shared.domain.TaskStatus
 import com.mari.shared.domain.TaskValidation
+import com.mari.shared.domain.preset
+import com.mari.shared.domain.toSimpleDueKind
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -55,8 +56,8 @@ fun EditTaskSheet(
     var duePreset by remember(task.id) { mutableStateOf(task.dueKind?.preset) }
     var dueDateText by remember(task.id) { mutableStateOf(task.dueAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.toString().orEmpty()) }
     var dueTimeText by remember(task.id) { mutableStateOf(task.dueAt?.atZone(ZoneId.systemDefault())?.toLocalTime()?.withSecond(0)?.withNano(0)?.toString().orEmpty()) }
-    var dueMonthText by remember(task.id) { mutableStateOf(task.dueKind?.month?.toString().orEmpty()) }
-    var dueYearText by remember(task.id) { mutableStateOf(task.dueKind?.year?.toString().orEmpty()) }
+    var dueMonthText by remember(task.id) { mutableStateOf((task.dueKind as? DueKind.MonthYear)?.month?.toString().orEmpty()) }
+    var dueYearText by remember(task.id) { mutableStateOf((task.dueKind as? DueKind.MonthYear)?.year?.toString().orEmpty()) }
     var nameError by remember(task.id) { mutableStateOf<String?>(null) }
     var descriptionError by remember(task.id) { mutableStateOf<String?>(null) }
     var formError by remember(task.id) { mutableStateOf<String?>(null) }
@@ -155,7 +156,7 @@ fun EditTaskSheet(
                             selectedReminderOffsets = if (checked) selectedReminderOffsets + reminder.offsetSeconds else selectedReminderOffsets - reminder.offsetSeconds
                         },
                     )
-                    Text(reminder.label)
+                    Text(reminder.label ?: "${reminder.offsetSeconds}s")
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -182,19 +183,20 @@ fun EditTaskSheet(
                     val dueSelection = runCatching {
                         when (duePreset) {
                             null -> null
-                            DuePreset.SPECIFIC_DAY -> DueDateResolver.resolve(
-                                preset = DuePreset.SPECIFIC_DAY,
-                                specificDate = LocalDate.parse(dueDateText),
-                                specificTime = dueTimeText.takeIf { it.isNotBlank() }?.let(LocalTime::parse),
-                                zoneId = ZoneId.systemDefault(),
-                            )
-                            DuePreset.MONTH_YEAR -> DueDateResolver.resolve(
-                                preset = DuePreset.MONTH_YEAR,
-                                month = dueMonthText.toInt(),
-                                year = dueYearText.toInt(),
-                                zoneId = ZoneId.systemDefault(),
-                            )
-                            else -> DueDateResolver.resolve(duePreset!!, zoneId = ZoneId.systemDefault())
+                            DuePreset.SPECIFIC_DAY -> {
+                                val kind = DueKind.SpecificDay(
+                                    dateIso = LocalDate.parse(dueDateText).toString(),
+                                    timeHhmm = dueTimeText.takeIf { it.isNotBlank() },
+                                )
+                                kind to DueDateResolver.resolve(kind, Instant.now(), ZoneId.systemDefault())
+                            }
+                            DuePreset.MONTH_YEAR -> {
+                                val kind = DueKind.MonthYear(month = dueMonthText.toInt(), year = dueYearText.toInt())
+                                kind to DueDateResolver.resolve(kind, Instant.now(), ZoneId.systemDefault())
+                            }
+                            else -> duePreset!!.toSimpleDueKind()?.let { kind ->
+                                kind to DueDateResolver.resolve(kind, Instant.now(), ZoneId.systemDefault())
+                            }
                         }
                     }.getOrNull()
                     if (duePreset != null && dueSelection == null) {

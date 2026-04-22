@@ -162,7 +162,7 @@ fun AddTaskScreen(
                         checked = reminder.offsetSeconds in uiState.selectedReminderOffsets,
                         onCheckedChange = { checked -> viewModel.onReminderToggle(reminder.offsetSeconds, checked) },
                     )
-                    Text(reminder.label.ifBlank { "${reminder.offsetSeconds}s" })
+                    Text(reminder.label ?: "${reminder.offsetSeconds}s")
                 }
             }
             uiState.formError?.let {

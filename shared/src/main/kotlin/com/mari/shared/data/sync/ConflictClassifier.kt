@@ -36,10 +36,15 @@ object ConflictClassifier {
         if (localDeleted.xor(incomingDeleted)) return ConflictDecision.MERGE_DELETE_EDIT
 
         if (
+            local.name == incoming.name &&
             local.description == incoming.description &&
             local.status == incoming.status &&
             local.deletedAt == incoming.deletedAt &&
-            local.executionStartedAt == incoming.executionStartedAt
+            local.executionStartedAt == incoming.executionStartedAt &&
+            local.dueAt == incoming.dueAt &&
+            local.dueKind == incoming.dueKind &&
+            local.deadlineReminders == incoming.deadlineReminders &&
+            local.colorHex == incoming.colorHex
         ) {
             return if (incoming.updatedAt >= local.updatedAt) {
                 ConflictDecision.ADOPT_INCOMING

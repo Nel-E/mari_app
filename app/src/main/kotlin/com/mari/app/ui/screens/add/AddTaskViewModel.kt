@@ -12,12 +12,12 @@ import com.mari.shared.domain.DeviceId
 import com.mari.shared.domain.DueDateResolver
 import com.mari.shared.domain.DueKind
 import com.mari.shared.domain.DuePreset
+import com.mari.shared.domain.toSimpleDueKind
 import com.mari.shared.domain.ExecutionRules
 import com.mari.shared.domain.TaskValidation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -177,31 +177,18 @@ class AddTaskViewModel @Inject constructor(
     private fun resolveDueSelection(state: AddTaskUiState): Pair<DueKind, Instant>? {
         val preset = state.duePreset ?: return null
         return runCatching {
-            when (preset) {
-                DuePreset.SPECIFIC_DAY -> {
-                    val date = LocalDate.parse(state.dueDateText)
-                    val time = state.dueTimeText.takeIf { it.isNotBlank() }?.let(LocalTime::parse)
-                    DueDateResolver.resolve(
-                        preset = preset,
-                        specificDate = date,
-                        specificTime = time,
-                        zoneId = ZoneId.systemDefault(),
-                        now = clock.nowUtc(),
-                    )
-                }
-                DuePreset.MONTH_YEAR -> DueDateResolver.resolve(
-                    preset = preset,
+            val kind: DueKind = when (preset) {
+                DuePreset.SPECIFIC_DAY -> DueKind.SpecificDay(
+                    dateIso = LocalDate.parse(state.dueDateText).toString(),
+                    timeHhmm = state.dueTimeText.takeIf { it.isNotBlank() },
+                )
+                DuePreset.MONTH_YEAR -> DueKind.MonthYear(
                     month = state.dueMonthText.toInt(),
                     year = state.dueYearText.toInt(),
-                    zoneId = ZoneId.systemDefault(),
-                    now = clock.nowUtc(),
                 )
-                else -> DueDateResolver.resolve(
-                    preset = preset,
-                    zoneId = ZoneId.systemDefault(),
-                    now = clock.nowUtc(),
-                )
+                else -> preset.toSimpleDueKind() ?: return@runCatching null
             }
+            kind to DueDateResolver.resolve(kind, clock.nowUtc(), ZoneId.systemDefault())
         }.getOrNull()
     }
 }
