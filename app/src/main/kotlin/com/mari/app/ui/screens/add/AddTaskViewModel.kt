@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mari.app.reminders.DeadlineReminderScheduler
 import com.mari.app.settings.PhoneSettings
-import com.mari.app.settings.SettingsRepository
+import com.mari.app.settings.SettingsReader
 import com.mari.shared.data.repository.TaskRepository
 import com.mari.shared.domain.Clock
 import com.mari.shared.domain.DeadlineReminder
@@ -49,7 +49,7 @@ data class AddTaskUiState(
 @HiltViewModel
 class AddTaskViewModel @Inject constructor(
     private val repository: TaskRepository,
-    private val settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsReader,
     private val deadlineReminderScheduler: DeadlineReminderScheduler,
     private val clock: Clock,
 ) : ViewModel() {

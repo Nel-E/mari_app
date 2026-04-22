@@ -19,13 +19,18 @@ import kotlinx.coroutines.flow.map
 
 private val Context.phoneSettingsDataStore by preferencesDataStore(name = "phone_settings")
 
+interface SettingsReader {
+    val settings: Flow<PhoneSettings>
+    suspend fun current(): PhoneSettings
+}
+
 @Singleton
-class SettingsRepository @Inject constructor(
+open class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-) {
+) : SettingsReader {
     private val json = Json { ignoreUnknownKeys = true }
 
-    val settings: Flow<PhoneSettings> = context.phoneSettingsDataStore.data.map { prefs ->
+    override val settings: Flow<PhoneSettings> = context.phoneSettingsDataStore.data.map { prefs ->
         PhoneSettings(
             shakeStrength = prefs[KEY_SHAKE_STRENGTH] ?: 15f,
             shakeDurationMs = (prefs[KEY_SHAKE_DURATION_MS] ?: 300).toLong(),
@@ -43,7 +48,7 @@ class SettingsRepository @Inject constructor(
         )
     }
 
-    suspend fun current(): PhoneSettings = settings.first()
+    override suspend fun current(): PhoneSettings = settings.first()
 
     suspend fun updateShakeStrength(value: Float) {
         context.phoneSettingsDataStore.edit { it[KEY_SHAKE_STRENGTH] = value.coerceIn(10f, 30f) }

@@ -23,7 +23,7 @@ class SeedingTest {
     fun `empty list gets one seed task`() {
         val result = Seeding.ensureSeedTask(emptyList(), clock, device)
         assertThat(result).hasSize(1)
-        assertThat(result[0].description).isEqualTo("New Task")
+        assertThat(result[0].name).isEqualTo("New Task")
         assertThat(result[0].status).isEqualTo(TaskStatus.TO_BE_DONE)
     }
 
@@ -32,7 +32,7 @@ class SeedingTest {
         val tasks = listOf(task("1", deletedAt = clock.nowUtc()), task("2", deletedAt = clock.nowUtc()))
         val result = Seeding.ensureSeedTask(tasks, clock, device)
         assertThat(result).hasSize(3)
-        assertThat(result.last().description).isEqualTo("New Task")
+        assertThat(result.last().name).isEqualTo("New Task")
     }
 
     @Test

@@ -89,6 +89,7 @@ class WatchTaskRepositoryTest {
         val clock = FixedClock(Instant.parse("2026-01-01T10:00:00Z"))
         return Task(
             id = id,
+            name = "Task $id",
             description = "Task $id",
             status = TaskStatus.TO_BE_DONE,
             createdAt = clock.nowUtc(),

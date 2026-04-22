@@ -62,8 +62,8 @@ class TaskFileCodecTest {
         val file = TaskFile(tasks = emptyList())
         val json = TaskFileCodec.encode(file)
         assertThat(json).contains("\"schemaVersion\"")
-        assertThat(json).contains("\"1\"").isFalse()
-        assertThat(json).contains(":1")
+        assertThat(json).doesNotContain("\"schemaVersion\":\"1\"")
+        assertThat(json).contains("\"schemaVersion\":")
     }
 
     @Test

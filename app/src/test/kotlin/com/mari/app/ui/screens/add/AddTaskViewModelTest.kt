@@ -2,6 +2,9 @@ package com.mari.app.ui.screens.add
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import com.mari.app.reminders.DeadlineReminderScheduler
+import com.mari.app.settings.PhoneSettings
+import com.mari.app.settings.SettingsReader
 import com.mari.app.util.MainDispatcherRule
 import com.mari.shared.domain.FixedClock
 import com.mari.shared.domain.Task
@@ -20,19 +23,21 @@ class AddTaskViewModelTest {
     private val clock = FixedClock(Instant.parse("2026-01-01T10:00:00Z"))
     private val tasksFlow = MutableStateFlow<List<Task>>(emptyList())
     private val repository = FakeRepo(tasksFlow)
+    private val settings = FakeSettingsReader()
+    private val scheduler = NoopScheduler()
 
-    private fun vm() = AddTaskViewModel(repository, clock)
+    private fun vm() = AddTaskViewModel(repository, settings, scheduler, clock)
 
     @Test
-    fun `blank description sets error and does not save`() = runTest {
+    fun `blank name sets error and does not save`() = runTest {
         val viewModel = vm()
         viewModel.uiState.test {
             awaitItem()
-            viewModel.onDescriptionChange("   ")
+            viewModel.onNameChange("   ")
             awaitItem()
             viewModel.save()
             val state = awaitItem()
-            assertThat(state.descriptionError).isNotNull()
+            assertThat(state.nameError).isNotNull()
             assertThat(state.saved).isFalse()
             cancelAndIgnoreRemainingEvents()
         }
@@ -40,11 +45,11 @@ class AddTaskViewModelTest {
     }
 
     @Test
-    fun `valid description saves task and sets saved`() = runTest {
+    fun `valid name saves task and sets saved`() = runTest {
         val viewModel = vm()
         viewModel.uiState.test {
             awaitItem()
-            viewModel.onDescriptionChange("Buy groceries")
+            viewModel.onNameChange("Buy groceries")
             awaitItem()
             viewModel.save()
             val firstAfterSave = awaitItem()
@@ -53,33 +58,20 @@ class AddTaskViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
         assertThat(tasksFlow.value).hasSize(1)
-        assertThat(tasksFlow.value.first().description).isEqualTo("Buy groceries")
+        assertThat(tasksFlow.value.first().name).isEqualTo("Buy groceries")
     }
 
     @Test
-    fun `onDescriptionChange clears previous error`() = runTest {
+    fun `onNameChange clears previous error`() = runTest {
         val viewModel = vm()
         viewModel.uiState.test {
-            awaitItem()
-            viewModel.save() // triggers error on empty description
-            val withError = awaitItem()
-            assertThat(withError.descriptionError).isNotNull()
-            viewModel.onDescriptionChange("Valid")
-            val cleared = awaitItem()
-            assertThat(cleared.descriptionError).isNull()
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `description over 500 chars sets error`() = runTest {
-        val viewModel = vm()
-        viewModel.uiState.test {
-            awaitItem()
-            viewModel.onDescriptionChange("a".repeat(501))
             awaitItem()
             viewModel.save()
-            assertThat(awaitItem().descriptionError).isNotNull()
+            val withError = awaitItem()
+            assertThat(withError.nameError).isNotNull()
+            viewModel.onNameChange("Valid")
+            val cleared = awaitItem()
+            assertThat(cleared.nameError).isNull()
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -93,4 +85,15 @@ private class FakeRepo(private val flow: MutableStateFlow<List<Task>>) :
         flow.value = transform(flow.value)
         return Result.success(Unit)
     }
+}
+
+private class FakeSettingsReader : SettingsReader {
+    private val _settings = MutableStateFlow(PhoneSettings())
+    override val settings: Flow<PhoneSettings> = _settings
+    override suspend fun current(): PhoneSettings = _settings.value
+}
+
+private class NoopScheduler : DeadlineReminderScheduler {
+    override fun schedule(task: Task) = Unit
+    override fun cancel(taskId: String) = Unit
 }

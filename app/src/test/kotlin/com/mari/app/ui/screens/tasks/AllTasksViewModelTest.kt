@@ -2,6 +2,9 @@ package com.mari.app.ui.screens.tasks
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import com.mari.app.reminders.DeadlineReminderScheduler
+import com.mari.app.settings.PhoneSettings
+import com.mari.app.settings.SettingsReader
 import com.mari.app.util.MainDispatcherRule
 import com.mari.shared.domain.DeviceId
 import com.mari.shared.domain.ExecutionRules
@@ -24,14 +27,24 @@ class AllTasksViewModelTest {
     private val tasksFlow = MutableStateFlow<List<Task>>(emptyList())
     private val repository = FakeAllTasksRepo(tasksFlow)
 
-    private fun vm() = AllTasksViewModel(repository, clock)
+    private val settings = object : SettingsReader {
+        private val state = kotlinx.coroutines.flow.MutableStateFlow(PhoneSettings())
+        override val settings = state
+        override suspend fun current() = state.value
+    }
+    private val scheduler = object : DeadlineReminderScheduler {
+        override fun schedule(task: Task) = Unit
+        override fun cancel(taskId: String) = Unit
+    }
+
+    private fun vm() = AllTasksViewModel(repository, settings, scheduler, clock)
 
     private fun makeTask(
         id: String,
         description: String = "Task $id",
         status: TaskStatus = TaskStatus.TO_BE_DONE,
     ): Task {
-        val base = ExecutionRules.createTask(description, clock, DeviceId.PHONE, id)
+        val base = ExecutionRules.createTask(name = description, clock = clock, deviceId = DeviceId.PHONE, id = id)
         return if (status == TaskStatus.TO_BE_DONE) base
         else ExecutionRules.applyStatusChange(base, status, clock, DeviceId.PHONE)
     }
@@ -166,7 +179,16 @@ class AllTasksViewModelTest {
             awaitItem()
             viewModel.onTaskClick(task)
             awaitItem() // selectedTask set
-            viewModel.onSaveEdit("1", "Updated desc", TaskStatus.PAUSED)
+            viewModel.onSaveEdit(
+                taskId = "1",
+                name = "Updated name",
+                description = "Updated desc",
+                newStatus = TaskStatus.PAUSED,
+                dueAt = null,
+                dueKind = null,
+                reminders = emptyList(),
+                colorHex = null,
+            )
             val afterSave = awaitItem() // selectedTask cleared
             assertThat(afterSave.selectedTask).isNull()
             cancelAndIgnoreRemainingEvents()

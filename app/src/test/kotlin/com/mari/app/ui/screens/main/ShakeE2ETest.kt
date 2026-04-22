@@ -36,10 +36,17 @@ class ShakeE2ETest {
     private val shakeSource = FakeE2EShakeSource()
     private val shakeFeedback = NoOpE2EShakeFeedback()
 
-    private fun vm() = MainViewModel(repository, clock, shakeSource, shakeFeedback)
+    private val safSource = object : com.mari.app.data.storage.SafSource {
+        override val grant = kotlinx.coroutines.flow.MutableStateFlow<com.mari.app.data.storage.SafGrant>(
+            com.mari.app.data.storage.SafGrant.Missing
+        )
+        override suspend fun init() = Unit
+    }
+
+    private fun vm() = MainViewModel(repository, clock, shakeSource, shakeFeedback, safSource)
 
     private fun task(id: String, status: TaskStatus = TaskStatus.TO_BE_DONE): Task {
-        val base = ExecutionRules.createTask("Task $id", clock, DeviceId.PHONE, id)
+        val base = ExecutionRules.createTask(name = "Task $id", clock = clock, deviceId = DeviceId.PHONE, id = id)
         return if (status == TaskStatus.TO_BE_DONE) base
         else ExecutionRules.applyStatusChange(base, status, clock, DeviceId.PHONE)
     }

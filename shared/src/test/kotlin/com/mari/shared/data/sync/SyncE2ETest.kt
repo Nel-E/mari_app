@@ -1,6 +1,7 @@
 package com.mari.shared.data.sync
 
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import com.mari.shared.domain.DeviceId
 import com.mari.shared.domain.Task
 import com.mari.shared.domain.TaskStatus
@@ -63,8 +64,8 @@ class SyncE2ETest {
             updatedSyncedVersions,
         )
 
-        assertThat(rePlan.conflicts)
-            .withFailMessage("Conflicts not resolved after one sync round: ${rePlan.conflicts}")
+        assertWithMessage("Conflicts not resolved after one sync round: ${rePlan.conflicts}")
+            .that(rePlan.conflicts)
             .isEmpty()
     }
 
@@ -133,7 +134,7 @@ class SyncE2ETest {
     }
 
     @Test
-    fun `idempotent: running planForDelta twice on same state yields empty plan`() {
+    fun `idempotent - running planForDelta twice on same state yields empty plan`() {
         val ids = (1..200).map { "t$it" }
         val tasks = ids.map { id -> task(id, version = 3, modifiedBy = DeviceId.PHONE) }
         val syncedVersions = tasks.associate { it.id to it.version }

@@ -1,6 +1,7 @@
 package com.mari.shared.data.sync
 
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import com.mari.shared.domain.DeviceId
 import com.mari.shared.domain.Task
 import com.mari.shared.domain.TaskStatus
@@ -32,8 +33,8 @@ class SyncConvergenceTest {
                 syncedVersions + plan.ackVersions,
             )
 
-            assertThat(rePlan.conflicts)
-                .withFailMessage("Conflicts still exist after plan application: $rePlan")
+            assertWithMessage("Conflicts still exist after plan application: $rePlan")
+                .that(rePlan.conflicts)
                 .isEmpty()
         }
     }

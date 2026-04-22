@@ -77,7 +77,7 @@ private class GrantedSafSource(treeUri: Uri) : SafSource {
 
 private class CorruptOnFirstLoadStorage : TaskStorage {
     private var firstLoad = true
-    private var stored = TaskFile(emptyList(), FileSettings("phone"))
+    private var stored = TaskFile(tasks = emptyList(), settings = FileSettings("phone"))
 
     override fun load(treeUri: Uri): Result<TaskFile> {
         if (firstLoad) {
@@ -95,7 +95,7 @@ private class CorruptOnFirstLoadStorage : TaskStorage {
     override fun exists(treeUri: Uri): Boolean = true
 
     override fun initialFile(deviceId: DeviceId): TaskFile =
-        TaskFile(emptyList(), FileSettings(deviceId.name.lowercase()))
+        TaskFile(tasks = emptyList(), settings = FileSettings(deviceId.name.lowercase()))
 }
 
 private class CorruptThenFailWriteStorage : TaskStorage {
@@ -115,5 +115,5 @@ private class CorruptThenFailWriteStorage : TaskStorage {
     override fun exists(treeUri: Uri): Boolean = true
 
     override fun initialFile(deviceId: DeviceId): TaskFile =
-        TaskFile(emptyList(), FileSettings(deviceId.name.lowercase()))
+        TaskFile(tasks = emptyList(), settings = FileSettings(deviceId.name.lowercase()))
 }

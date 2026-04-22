@@ -3,7 +3,7 @@ package com.mari.app.ui.screens.tasks
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mari.app.reminders.DeadlineReminderScheduler
-import com.mari.app.settings.SettingsRepository
+import com.mari.app.settings.SettingsReader
 import com.mari.shared.data.repository.TaskRepository
 import com.mari.shared.domain.Clock
 import com.mari.shared.domain.DeadlineReminder
@@ -41,7 +41,7 @@ data class ExecutingConflict(
 @HiltViewModel
 class AllTasksViewModel @Inject constructor(
     private val repository: TaskRepository,
-    settingsRepository: SettingsRepository,
+    settingsRepository: SettingsReader,
     private val deadlineReminderScheduler: DeadlineReminderScheduler,
     private val clock: Clock,
 ) : ViewModel() {

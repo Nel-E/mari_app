@@ -6,9 +6,9 @@ import org.junit.Test
 class TaskValidationTest {
 
     @Test
-    fun `blank description fails`() {
-        assertThat(TaskValidation.validateDescription("").isFailure).isTrue()
-        assertThat(TaskValidation.validateDescription("   ").isFailure).isTrue()
+    fun `blank description is accepted as empty notes`() {
+        assertThat(TaskValidation.validateDescription("").getOrNull()).isEqualTo("")
+        assertThat(TaskValidation.validateDescription("   ").getOrNull()).isEqualTo("")
     }
 
     @Test
@@ -16,6 +16,12 @@ class TaskValidationTest {
         val result = TaskValidation.validateDescription("Buy milk")
         assertThat(result.isSuccess).isTrue()
         assertThat(result.getOrNull()).isEqualTo("Buy milk")
+    }
+
+    @Test
+    fun `blank name fails`() {
+        assertThat(TaskValidation.validateName("").isFailure).isTrue()
+        assertThat(TaskValidation.validateName("   ").isFailure).isTrue()
     }
 
     @Test

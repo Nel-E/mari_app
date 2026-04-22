@@ -96,7 +96,7 @@ class ExecutionRulesTest {
     fun `createTask uses TO_BE_DONE status`() {
         val t = ExecutionRules.createTask("Buy milk", clock, device)
         assertThat(t.status).isEqualTo(TaskStatus.TO_BE_DONE)
-        assertThat(t.description).isEqualTo("Buy milk")
+        assertThat(t.name).isEqualTo("Buy milk")
         assertThat(t.version).isEqualTo(1)
         assertThat(t.deletedAt).isNull()
         assertThat(t.executionStartedAt).isNull()

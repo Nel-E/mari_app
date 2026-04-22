@@ -5,6 +5,8 @@ import com.mari.app.data.storage.SafFolderManager
 import com.mari.app.data.storage.SafSource
 import com.mari.app.data.storage.TaskFileStorage
 import com.mari.app.data.storage.TaskStorage
+import com.mari.app.settings.SettingsReader
+import com.mari.app.settings.SettingsRepository
 import com.mari.shared.data.repository.TaskRepository
 import com.mari.shared.domain.Clock
 import com.mari.shared.domain.SystemClock
@@ -30,6 +32,10 @@ abstract class StorageModule {
     @Binds
     @Singleton
     abstract fun bindTaskStorage(impl: TaskFileStorage): TaskStorage
+
+    @Binds
+    @Singleton
+    abstract fun bindSettingsReader(impl: SettingsRepository): SettingsReader
 
     companion object {
         @Provides

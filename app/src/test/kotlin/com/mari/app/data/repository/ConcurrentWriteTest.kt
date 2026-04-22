@@ -89,7 +89,7 @@ private class InMemoryTaskStorage(
     private val failWrite: Boolean = false,
 ) : TaskStorage {
 
-    private var stored = TaskFile(emptyList(), FileSettings("phone"))
+    private var stored = TaskFile(tasks = emptyList(), settings = FileSettings("phone"))
 
     override fun load(treeUri: Uri): Result<TaskFile> = Result.success(stored)
 
@@ -102,5 +102,5 @@ private class InMemoryTaskStorage(
     override fun exists(treeUri: Uri): Boolean = true
 
     override fun initialFile(deviceId: DeviceId): TaskFile =
-        TaskFile(emptyList(), FileSettings(deviceId.name.lowercase()))
+        TaskFile(tasks = emptyList(), settings = FileSettings(deviceId.name.lowercase()))
 }
