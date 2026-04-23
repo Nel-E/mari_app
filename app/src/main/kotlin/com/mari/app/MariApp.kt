@@ -3,6 +3,7 @@ package com.mari.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.mari.app.appupdate.AppUpdateScheduler
 import com.mari.app.data.repository.FileTaskRepository
 import com.mari.app.di.ApplicationScope
 import com.mari.app.reminders.ExecutingStatusObserver
@@ -32,6 +33,9 @@ class MariApp : Application(), Configuration.Provider {
     lateinit var wearApkDispatcher: WearApkDispatcher
 
     @Inject
+    lateinit var appUpdateScheduler: AppUpdateScheduler
+
+    @Inject
     @field:ApplicationScope
     lateinit var appScope: CoroutineScope
 
@@ -46,5 +50,7 @@ class MariApp : Application(), Configuration.Provider {
         executingStatusObserver.start()
         syncClient.start()
         appScope.launch { wearApkDispatcher.dispatchIfAvailable() }
+        appUpdateScheduler.enqueuePeriodic()
+        appUpdateScheduler.enqueueOnStartup()
     }
 }

@@ -23,6 +23,11 @@ android {
         versionName = "1.0.0"
         buildConfigField("long", "BUILD_TIME_MS", "${System.currentTimeMillis()}L")
 
+        val mariApiBaseUrl = project.findProperty("MARI_API_BASE_URL") as String? ?: "http://192.168.1.50:8000/"
+        val mariApiToken = project.findProperty("MARI_API_TOKEN") as String? ?: ""
+        buildConfigField("String", "MARI_API_BASE_URL", "\"$mariApiBaseUrl\"")
+        buildConfigField("String", "MARI_API_TOKEN", "\"$mariApiToken\"")
+
         testInstrumentationRunner = "com.mari.app.HiltTestRunner"
     }
 
@@ -109,6 +114,12 @@ dependencies {
     implementation(libs.hilt.work)
     androidTestImplementation(libs.work.testing)
 
+    // Retrofit / OkHttp
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp.core)
+    debugImplementation(libs.okhttp.logging)
+
     // DocumentFile — SAF helper
     implementation(libs.documentfile)
 
@@ -127,6 +138,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.compose.ui.test.manifest)
+    testImplementation(libs.work.testing)
 
     // Android / instrumented tests
     androidTestImplementation(libs.junit4)
