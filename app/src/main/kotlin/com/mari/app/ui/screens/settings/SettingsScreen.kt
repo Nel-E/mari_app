@@ -49,6 +49,7 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     onNavigateUp: () -> Unit,
+    onNavigateToUpdate: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -181,6 +182,15 @@ fun SettingsScreen(
                 supportingContent = {
                     Text("Last: ${uiState.backupInfo.lastBackupLabel}\nNext: ${uiState.backupInfo.nextBackupLabel}")
                 },
+            )
+            AppUpdateSection(
+                autoCheckEnabled = uiState.updateAutoCheckEnabled,
+                track = uiState.updateTrack,
+                availableUpdate = uiState.availableUpdate,
+                onAutoCheckChange = viewModel::onUpdateAutoCheckChange,
+                onTrackChange = viewModel::onUpdateTrackChange,
+                onCheckNow = viewModel::onCheckNow,
+                onViewUpdate = onNavigateToUpdate,
             )
             HorizontalDivider()
             SectionTitle("About")

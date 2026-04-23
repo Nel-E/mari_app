@@ -5,9 +5,13 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mari.app.appupdate.AppUpdateScheduler
 import com.mari.app.data.repository.FileTaskRepository
 import com.mari.app.data.storage.SafFolderManager
 import com.mari.app.data.storage.SafGrant
+import com.mari.app.domain.model.AppUpdateInfo
+import com.mari.app.domain.model.UpdateTrack
+import com.mari.app.domain.repository.AppUpdateRepository
 import com.mari.app.reminders.DailyNudgeScheduler
 import com.mari.app.settings.SettingsRepository
 import com.mari.shared.domain.DeadlineReminder
@@ -39,6 +43,9 @@ data class SettingsUiState(
     val dailyNudgeEnabled: Boolean = false,
     val dailyNudgeHour: Int = 9,
     val dailyNudgeMinute: Int = 0,
+    val updateAutoCheckEnabled: Boolean = true,
+    val updateTrack: UpdateTrack = UpdateTrack.STABLE,
+    val availableUpdate: AppUpdateInfo? = null,
 )
 
 @HiltViewModel
@@ -47,13 +54,16 @@ class SettingsViewModel @Inject constructor(
     private val safFolderManager: SafFolderManager,
     private val fileTaskRepository: FileTaskRepository,
     private val dailyNudgeScheduler: DailyNudgeScheduler,
+    private val appUpdateRepository: AppUpdateRepository,
+    private val appUpdateScheduler: AppUpdateScheduler,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
         safFolderManager.grant,
-    ) { settings, grant ->
+        appUpdateRepository.state,
+    ) { settings, grant, updateState ->
         SettingsUiState(
             storageFolderLabel = when (grant) {
                 is SafGrant.Granted -> grant.treeUri.toString()
@@ -76,6 +86,9 @@ class SettingsViewModel @Inject constructor(
             dailyNudgeEnabled = settings.dailyNudgeEnabled,
             dailyNudgeHour = settings.dailyNudgeHour,
             dailyNudgeMinute = settings.dailyNudgeMinute,
+            updateAutoCheckEnabled = updateState.autoCheckEnabled,
+            updateTrack = updateState.track,
+            availableUpdate = updateState.availableUpdate,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -146,6 +159,24 @@ class SettingsViewModel @Inject constructor(
                 dailyNudgeScheduler.schedule(hour, minute, current.quietWindow)
             }
         }
+    }
+
+    fun onUpdateAutoCheckChange(enabled: Boolean) {
+        viewModelScope.launch {
+            appUpdateRepository.setAutoCheckEnabled(enabled)
+            if (enabled) appUpdateScheduler.enqueuePeriodic() else appUpdateScheduler.cancelAll()
+        }
+    }
+
+    fun onUpdateTrackChange(track: UpdateTrack) {
+        viewModelScope.launch {
+            appUpdateRepository.setTrack(track)
+            appUpdateScheduler.reenqueueOnTrackChange(track)
+        }
+    }
+
+    fun onCheckNow() {
+        appUpdateScheduler.enqueueManual()
     }
 
     fun onFolderPicked(uri: Uri) {
