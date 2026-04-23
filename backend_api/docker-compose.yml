@@ -1,0 +1,12 @@
+services:
+  mari-api:
+    build: .
+    image: mari-api:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - /data/app_updates:/data/app_updates:ro
+    environment:
+      MARI_API_TOKEN: "${MARI_API_TOKEN}"
+      MARI_DATA_DIR: /data/app_updates
