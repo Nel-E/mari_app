@@ -12,6 +12,7 @@ import com.mari.app.domain.model.AppUpdateInfo
 import com.mari.app.domain.model.AppUpdateLocalState
 import com.mari.app.domain.model.UpdateTrack
 import com.mari.app.domain.repository.AppUpdateRepository
+import com.mari.app.wearinstall.WearUpdatePusher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
@@ -118,6 +119,7 @@ class AppUpdateCheckWorkerTest {
         forceNotify: Boolean,
         repo: AppUpdateRepository,
         notifier: AppUpdateNotifier,
+        wearDispatcher: WearUpdatePusher = FakeWearUpdatePusher(),
     ): AppUpdateCheckWorker {
         val inputData = androidx.work.Data.Builder()
             .putBoolean(AppUpdateCheckWorker.KEY_FORCE_NOTIFY, forceNotify)
@@ -129,9 +131,13 @@ class AppUpdateCheckWorkerTest {
                     appContext: Context,
                     workerClassName: String,
                     workerParameters: WorkerParameters,
-                ): ListenableWorker = AppUpdateCheckWorker(appContext, workerParameters, repo, notifier)
+                ): ListenableWorker = AppUpdateCheckWorker(appContext, workerParameters, repo, notifier, wearDispatcher)
             })
             .build() as AppUpdateCheckWorker
+    }
+
+    private class FakeWearUpdatePusher : WearUpdatePusher {
+        override suspend fun pushServerUpdateIfNeeded(state: AppUpdateLocalState) = Unit
     }
 
     private fun makeUpdateInfo(versionCode: Int) = AppUpdateInfo(

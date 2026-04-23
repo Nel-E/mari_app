@@ -7,11 +7,13 @@ import android.util.Log
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.security.MessageDigest
 
 private const val TAG = "WearApkInstallerService"
@@ -29,11 +31,22 @@ class WearApkInstallerService : WearableListenerService() {
         }
     }
 
-    private fun handleApkDelivery(dataMapItem: DataMapItem) {
-        val apkBytes = dataMapItem.dataMap.getByteArray("apk") ?: return
+    private suspend fun handleApkDelivery(dataMapItem: DataMapItem) {
         val expectedSha = dataMapItem.dataMap.getString("sha256") ?: return
-        val actualSha = sha256Hex(apkBytes)
+        val asset = dataMapItem.dataMap.getAsset("apk") ?: return
 
+        val apkBytes = runCatching {
+            Wearable.getDataClient(this)
+                .getFdForAsset(asset)
+                .await()
+                .inputStream
+                .use { it.readBytes() }
+        }.getOrElse { e ->
+            Log.e(TAG, "Failed to read APK asset", e)
+            return
+        }
+
+        val actualSha = sha256Hex(apkBytes)
         if (actualSha != expectedSha) {
             Log.w(TAG, "APK checksum mismatch — aborting install")
             return

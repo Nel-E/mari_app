@@ -33,6 +33,7 @@ class AppUpdateLocalStore @Inject constructor(
     private val KEY_RELEASE_NOTES = stringPreferencesKey("release_notes")
     private val KEY_LAST_NOTIFIED = intPreferencesKey("last_notified_version_code")
     private val KEY_LAST_ACKNOWLEDGED = intPreferencesKey("last_acknowledged_version_code")
+    private val KEY_LAST_PUSHED_WEAR = intPreferencesKey("last_pushed_wear_version_code")
 
     val state: Flow<AppUpdateLocalState> = context.appUpdateDataStore.data.map { prefs ->
         AppUpdateLocalState(
@@ -50,6 +51,7 @@ class AppUpdateLocalStore @Inject constructor(
             } ?: emptyList(),
             lastNotifiedVersionCode = prefs[KEY_LAST_NOTIFIED],
             lastAcknowledgedVersionCode = prefs[KEY_LAST_ACKNOWLEDGED],
+            lastPushedWearVersionCode = prefs[KEY_LAST_PUSHED_WEAR],
         )
     }
 
@@ -94,6 +96,12 @@ class AppUpdateLocalStore @Inject constructor(
     suspend fun setLastAcknowledgedVersionCode(code: Int?) {
         context.appUpdateDataStore.edit { prefs ->
             if (code == null) prefs.remove(KEY_LAST_ACKNOWLEDGED) else prefs[KEY_LAST_ACKNOWLEDGED] = code
+        }
+    }
+
+    suspend fun setLastPushedWearVersionCode(code: Int?) {
+        context.appUpdateDataStore.edit { prefs ->
+            if (code == null) prefs.remove(KEY_LAST_PUSHED_WEAR) else prefs[KEY_LAST_PUSHED_WEAR] = code
         }
     }
 }

@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mari.app.domain.repository.AppUpdateRepository
+import com.mari.app.wearinstall.WearUpdatePusher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -14,6 +15,7 @@ class AppUpdateCheckWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val repository: AppUpdateRepository,
     private val notifier: AppUpdateNotifier,
+    private val wearApkDispatcher: WearUpdatePusher,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -24,11 +26,16 @@ class AppUpdateCheckWorker @AssistedInject constructor(
         repository.checkForUpdate(forceNotify)
 
         val updated = repository.state.value
-        val available = updated.availableUpdate ?: return Result.success()
-        val alreadyNotified = updated.lastNotifiedVersionCode == available.versionCode && !forceNotify
-        if (!alreadyNotified) {
-            notifier.notifyAvailable(available)
+        val available = updated.availableUpdate
+        if (available != null) {
+            val alreadyNotified = updated.lastNotifiedVersionCode == available.versionCode && !forceNotify
+            if (!alreadyNotified) {
+                notifier.notifyAvailable(available)
+            }
         }
+
+        wearApkDispatcher.pushServerUpdateIfNeeded(updated)
+
         return Result.success()
     }
 

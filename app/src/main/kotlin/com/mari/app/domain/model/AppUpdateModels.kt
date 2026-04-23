@@ -35,6 +35,7 @@ data class AppUpdateLocalState(
     val releaseNotes: List<AppUpdateReleaseNote> = emptyList(),
     val lastNotifiedVersionCode: Int? = null,
     val lastAcknowledgedVersionCode: Int? = null,
+    val lastPushedWearVersionCode: Int? = null,
 )
 
 enum class UpdateTrack(val wire: String) {
