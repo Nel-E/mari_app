@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import com.google.common.truth.Truth.assertThat
 import com.mari.shared.domain.FixedClock
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -14,6 +15,7 @@ import org.robolectric.annotation.Config
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.TimeZone
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -21,12 +23,20 @@ class DailyNudgeSchedulerTest {
 
     private lateinit var alarmManager: AlarmManager
     private lateinit var scheduler: DailyNudgeScheduler
+    private lateinit var originalTimeZone: TimeZone
 
     @Before
     fun setUp() {
+        originalTimeZone = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
         val context = RuntimeEnvironment.getApplication()
         alarmManager = context.getSystemService(AlarmManager::class.java)
         scheduler = DailyNudgeScheduler(context, alarmManager, FixedClock(Instant.parse("2026-04-22T08:00:00Z")))
+    }
+
+    @After
+    fun tearDown() {
+        TimeZone.setDefault(originalTimeZone)
     }
 
     @Test
