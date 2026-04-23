@@ -44,6 +44,10 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".wearinstall.WearInstallCompleteReceiver"
+            android:exported="false" />
+
         <service
             android:name=".wearinstall.WearApkInstallerService"
             android:exported="true">

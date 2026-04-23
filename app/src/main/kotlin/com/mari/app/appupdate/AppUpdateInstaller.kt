@@ -48,7 +48,7 @@ class AppUpdateInstaller @Inject constructor(
         }
 
         val actualSha = digest.digest().joinToString("") { "%02x".format(it) }
-        if (!actualSha.equals(expectedSha256, ignoreCase = true)) {
+        if (actualSha != expectedSha256.lowercase()) {
             outFile.delete()
             error("SHA-256 mismatch: expected $expectedSha256, got $actualSha")
         }

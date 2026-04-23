@@ -35,6 +35,18 @@ class WearApkInstallerService : WearableListenerService() {
         val expectedSha = dataMapItem.dataMap.getString("sha256") ?: return
         val asset = dataMapItem.dataMap.getAsset("apk") ?: return
 
+        val incomingVersionCode = dataMapItem.dataMap.getInt("version_code", 0)
+        if (incomingVersionCode > 0) {
+            val installedVersionCode = runCatching {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0).versionCode
+            }.getOrDefault(0)
+            if (incomingVersionCode <= installedVersionCode) {
+                Log.d(TAG, "Wear APK versionCode $incomingVersionCode already installed ($installedVersionCode) — skipping")
+                return
+            }
+        }
+
         val apkBytes = runCatching {
             Wearable.getDataClient(this)
                 .getFdForAsset(asset)
@@ -72,6 +84,7 @@ class WearApkInstallerService : WearableListenerService() {
 
         val session = runCatching { installer.openSession(sessionId) }.getOrElse { e ->
             Log.e(TAG, "Failed to open install session", e)
+            installer.abandonSession(sessionId)
             return
         }
 

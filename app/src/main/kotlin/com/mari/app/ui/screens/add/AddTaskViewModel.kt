@@ -14,6 +14,7 @@ import com.mari.shared.domain.DueKind
 import com.mari.shared.domain.DuePreset
 import com.mari.shared.domain.toSimpleDueKind
 import com.mari.shared.domain.ExecutionRules
+import com.mari.shared.domain.TaskColor
 import com.mari.shared.domain.TaskValidation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
@@ -132,6 +133,11 @@ class AddTaskViewModel @Inject constructor(
             _uiState.update { it.copy(colorError = "Choose a color for tasks with deadlines") }
             return
         }
+        val colorHexNormalized = state.colorHex.ifBlank { null }
+        if (colorHexNormalized != null && TaskColor.parse(colorHexNormalized).isFailure) {
+            _uiState.update { it.copy(colorError = "Enter a valid color like #FF8A65") }
+            return
+        }
 
         val validName = name.getOrThrow()
         val validDescription = description.getOrThrow()
@@ -155,7 +161,7 @@ class AddTaskViewModel @Inject constructor(
                     dueAt = dueSelection?.second,
                     dueKind = dueSelection?.first,
                     deadlineReminders = selectedReminders,
-                    colorHex = state.colorHex.ifBlank { null },
+                    colorHex = colorHexNormalized,
                 )
                 tasks + createdTask
             }

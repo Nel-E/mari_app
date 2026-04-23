@@ -38,7 +38,7 @@ class WearApkDispatcher @Inject constructor(
         }
 
         val sha256 = sha256Hex(apkBytes)
-        push(apkBytes, sha256)
+        push(apkBytes, sha256, versionCode = null)
     }
 
     /**
@@ -63,7 +63,7 @@ class WearApkDispatcher @Inject constructor(
             ).getOrThrow()
 
             try {
-                push(apkFile.readBytes(), dto.sha256)
+                push(apkFile.readBytes(), dto.sha256, versionCode = dto.versionCode)
                 localStore.setLastPushedWearVersionCode(dto.versionCode)
                 Log.i(TAG, "Wear APK ${dto.versionCode} pushed to watch")
             } finally {
@@ -74,11 +74,12 @@ class WearApkDispatcher @Inject constructor(
         }
     }
 
-    private suspend fun push(apkBytes: ByteArray, sha256: String) {
+    private suspend fun push(apkBytes: ByteArray, sha256: String, versionCode: Int?) {
         val asset = Asset.createFromBytes(apkBytes)
         val request = PutDataMapRequest.create("$DATA_PATH/${System.currentTimeMillis()}").apply {
             dataMap.putAsset("apk", asset)
             dataMap.putString("sha256", sha256)
+            if (versionCode != null) dataMap.putInt("version_code", versionCode)
         }.asPutDataRequest().setUrgent()
 
         runCatching { dataClient.putDataItem(request).await() }

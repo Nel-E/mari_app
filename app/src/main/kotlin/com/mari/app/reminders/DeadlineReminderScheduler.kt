@@ -94,7 +94,7 @@ class AlarmDeadlineReminderScheduler @Inject constructor(
         )
     }
 
-    private fun requestCode(taskId: String, offsetSeconds: Long): Int = 31 * taskId.hashCode() + offsetSeconds.hashCode()
+    private fun requestCode(taskId: String, offsetSeconds: Long): Int = "$taskId#$offsetSeconds".hashCode()
 
     private fun loadOffsets(taskId: String): List<Long> {
         val raw = prefs.getString(taskId, null) ?: return emptyList()

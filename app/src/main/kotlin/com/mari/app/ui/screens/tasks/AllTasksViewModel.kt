@@ -11,6 +11,7 @@ import com.mari.shared.domain.DeviceId
 import com.mari.shared.domain.DueKind
 import com.mari.shared.domain.ExecutionRules
 import com.mari.shared.domain.Task
+import com.mari.shared.domain.TaskColor
 import com.mari.shared.domain.TaskListing
 import com.mari.shared.domain.TaskStatus
 import com.mari.shared.domain.TaskValidation
@@ -129,6 +130,7 @@ class AllTasksViewModel @Inject constructor(
                 }
             }
 
+            val normalizedColor = colorHex?.let { TaskColor.parse(it).getOrNull()?.hex }
             val result = repository.update { tasks ->
                 tasks.map { task ->
                     if (task.id != taskId) task else ExecutionRules.applyStatusChange(
@@ -141,7 +143,7 @@ class AllTasksViewModel @Inject constructor(
                             dueAt = dueAt,
                             dueKind = dueKind,
                             deadlineReminders = reminders,
-                            colorHex = colorHex,
+                            colorHex = normalizedColor,
                         ).copy(version = task.version, updatedAt = task.updatedAt, lastModifiedBy = task.lastModifiedBy),
                         newStatus = newStatus,
                         clock = clock,
