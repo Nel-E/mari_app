@@ -60,7 +60,7 @@ fun timeToAngle(time: TimeValue): Float =
 /** Angle → snapped TimeValue (15-min steps). */
 fun angleToTime(angleDeg: Float): TimeValue {
     val norm = ((angleDeg + 90f) % 360f + 360f) % 360f
-    val totalMins = (((norm / 360f) * 24f * 60f) / 15f).roundToInt() * 15
+    val totalMins = ((norm / 360f) * 24f * 60f).roundToInt()
     return TimeValue(hours = (totalMins / 60) % 24, minutes = totalMins % 60)
 }
 
