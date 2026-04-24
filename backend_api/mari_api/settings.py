@@ -5,11 +5,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "app_updates"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="MARI_")
 
-    data_dir: Path = Path("/data/app_updates")
+    data_dir: Path = DEFAULT_DATA_DIR
     api_token: str = ""
 
     def auth_enabled(self) -> bool:

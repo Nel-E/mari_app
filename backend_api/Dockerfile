@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir \
 
 COPY mari_api/ ./mari_api/
 
-ENV MARI_DATA_DIR=/data/app_updates
+ENV MARI_DATA_DIR=/app/data/app_updates
 
 EXPOSE 8000
 
