@@ -33,7 +33,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -225,24 +224,23 @@ fun CircularTimeRangePicker(
                 drawCircle(color = handleFill, radius = handleRadius, center = endPos)
                 drawCircle(brush = handleBorder, radius = handleRadius, center = endPos, style = Stroke(width = 2.5f))
 
-                drawIntoCanvas { canvas ->
-                    val paint = android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(255, 74, 74, 106)
-                        textSize = boxSize * 0.034f
-                        textAlign = android.graphics.Paint.Align.CENTER
-                        typeface = android.graphics.Typeface.MONOSPACE
-                        isAntiAlias = true
-                    }
-                    listOf(0, 6, 12, 18).forEach { h ->
-                        val angle = (h / 24f) * 360f - 90f
-                        val pos = polarToOffset(angle, trackRadius - boxSize * 0.086f, center)
-                        canvas.nativeCanvas.drawText(
-                            h.toString(),
-                            pos.x,
-                            pos.y - (paint.descent() + paint.ascent()) / 2,
-                            paint,
-                        )
-                    }
+                val nativeCanvas = drawContext.canvas.nativeCanvas
+                val labelPaint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.argb(255, 74, 74, 106)
+                    textSize = boxSize * 0.034f
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    typeface = android.graphics.Typeface.MONOSPACE
+                    isAntiAlias = true
+                }
+                listOf(0, 6, 12, 18).forEach { h ->
+                    val angle = (h / 24f) * 360f - 90f
+                    val pos = polarToOffset(angle, trackRadius - boxSize * 0.086f, center)
+                    nativeCanvas.drawText(
+                        h.toString(),
+                        pos.x,
+                        pos.y - (labelPaint.descent() + labelPaint.ascent()) / 2,
+                        labelPaint,
+                    )
                 }
             }
 
