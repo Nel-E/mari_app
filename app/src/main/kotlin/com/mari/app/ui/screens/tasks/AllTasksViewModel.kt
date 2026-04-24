@@ -30,7 +30,6 @@ data class AllTasksUiState(
     val tasks: List<Task> = emptyList(),
     val filterState: TaskFilterState = TaskFilterState(),
     val selectedTask: Task? = null,
-    val pendingDeleteTask: Task? = null,
     val executingConflict: ExecutingConflict? = null,
     val editError: String? = null,
 )
@@ -50,7 +49,6 @@ class AllTasksViewModel @Inject constructor(
 
     private val _filterState = MutableStateFlow(TaskFilterState())
     private val _selectedTask = MutableStateFlow<Task?>(null)
-    private val _pendingDeleteTask = MutableStateFlow<Task?>(null)
     private val _executingConflict = MutableStateFlow<ExecutingConflict?>(null)
     private val _editError = MutableStateFlow<String?>(null)
     private val _reminderTemplates = MutableStateFlow(com.mari.app.settings.PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES)
@@ -61,13 +59,13 @@ class AllTasksViewModel @Inject constructor(
         combine(repository.observeTasks(), _filterState, _selectedTask) { tasks, filterState, selectedTask ->
             Triple(tasks, filterState, selectedTask)
         },
-        combine(_pendingDeleteTask, _executingConflict, _editError) { pendingDelete, conflict, editError ->
-            Triple(pendingDelete, conflict, editError)
+        combine(_executingConflict, _editError) { conflict, editError ->
+            Pair(conflict, editError)
         },
-    ) { (tasks, filterState, selectedTask), (pendingDeleteTask, executingConflict, editError) ->
+    ) { (tasks, filterState, selectedTask), (executingConflict, editError) ->
         val filtered = TaskListing.filter(tasks, filterState.selectedStatuses, filterState.query)
         val sorted = TaskListing.sort(filtered, filterState.sortMode.shared)
-        AllTasksUiState(sorted, filterState, selectedTask, pendingDeleteTask, executingConflict, editError)
+        AllTasksUiState(sorted, filterState, selectedTask, executingConflict, editError)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AllTasksUiState())
 
     init {
@@ -170,33 +168,10 @@ class AllTasksViewModel @Inject constructor(
         }
     }
 
-    fun onRequestDelete(task: Task) {
-        _pendingDeleteTask.value = task
+    fun onPermanentDeleteTask(task: Task) {
         _selectedTask.value = null
-    }
-
-    fun onDismissDelete() {
-        _pendingDeleteTask.value = null
-    }
-
-    fun onConfirmDelete() {
-        val task = _pendingDeleteTask.value ?: return
-        _pendingDeleteTask.value = null
         viewModelScope.launch {
-            repository.update { tasks ->
-                tasks.map { t -> if (t.id == task.id) ExecutionRules.softDelete(t, clock, DeviceId.PHONE) else t }
-            }
-            deadlineReminderScheduler.cancel(task.id)
-        }
-    }
-
-    fun onConfirmPermanentDelete() {
-        val task = _pendingDeleteTask.value ?: return
-        _pendingDeleteTask.value = null
-        viewModelScope.launch {
-            repository.update { tasks ->
-                tasks.filterNot { it.id == task.id }
-            }
+            repository.update { tasks -> tasks.filterNot { it.id == task.id } }
             deadlineReminderScheduler.cancel(task.id)
         }
     }

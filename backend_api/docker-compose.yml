@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data/app_updates:/app/data/app_updates:ro
+      - /media/code/mari_app/backend_api/data/app_updates:/data/app_updates:ro
     environment:
       MARI_API_TOKEN: "${MARI_API_TOKEN}"
-      MARI_DATA_DIR: /app/data/app_updates
+      MARI_DATA_DIR: /data/app_updates

@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mari.app.ui.components.EmptyState
 import com.mari.app.ui.components.TaskRow
-import com.mari.app.ui.dialogs.DeleteConfirmDialog
 import com.mari.app.ui.dialogs.ExecutingConflictDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,17 +89,8 @@ fun AllTasksScreen(
             onSave = { name, desc, status, dueAt, dueKind, reminders, colorHex ->
                 viewModel.onSaveEdit(task.id, name, desc, status, dueAt, dueKind, reminders, colorHex)
             },
-            onDelete = { viewModel.onRequestDelete(task) },
+            onDelete = { viewModel.onPermanentDeleteTask(task) },
             onDismiss = viewModel::onDismissEdit,
-        )
-    }
-
-    uiState.pendingDeleteTask?.let { task ->
-        DeleteConfirmDialog(
-            taskDescription = task.name,
-            onSoftDelete = viewModel::onConfirmDelete,
-            onPermanentDelete = viewModel::onConfirmPermanentDelete,
-            onDismiss = viewModel::onDismissDelete,
         )
     }
 

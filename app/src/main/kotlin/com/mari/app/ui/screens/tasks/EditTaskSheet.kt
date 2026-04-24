@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -20,6 +22,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
@@ -34,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.mari.app.ui.util.rememberCountdown
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
@@ -90,6 +95,7 @@ fun EditTaskSheet(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     var deadlineDropdownExpanded by remember { mutableStateOf(false) }
     var pendingStatus by remember(task.id) { mutableStateOf(task.status) }
     var selectedReminderOffsets by remember(task.id) {
@@ -106,7 +112,23 @@ fun EditTaskSheet(
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp),
         ) {
-            Text("Edit task", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Edit task",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = { showDeleteConfirm = true }) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete task",
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
                 value = name,
@@ -304,14 +326,6 @@ fun EditTaskSheet(
                 Text("Save")
             }
             displayedFormError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Spacer(modifier = Modifier.height(8.dp))
-            TextButton(
-                onClick = onDelete,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Delete")
-            }
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -376,6 +390,34 @@ fun EditTaskSheet(
             onConfirm = {
                 colorHex = it
                 showColorPicker = false
+            },
+        )
+    }
+
+    if (showDeleteConfirm) {
+        val countdown by rememberCountdown(4_000L)
+        val ready = countdown == 0L
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete task permanently?") },
+            text = {
+                Text(
+                    if (ready) "This cannot be undone."
+                    else "This cannot be undone. You can confirm in ${(countdown / 1000L) + 1}s.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDelete()
+                    },
+                    enabled = ready,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text("Delete forever") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
             },
         )
     }
