@@ -15,7 +15,6 @@ import com.mari.app.domain.repository.AppUpdateRepository
 import com.mari.app.reminders.DailyNudgeScheduler
 import com.mari.app.settings.SettingsRepository
 import com.mari.app.settings.ThemeMode
-import com.mari.shared.domain.DeadlineReminder
 import com.mari.shared.domain.TaskPriority
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -39,8 +38,10 @@ data class SettingsUiState(
     val reminderEnabled: Boolean = false,
     val reminderIntervalMinutes: Int = 30,
     val reminderVibrate: Boolean = true,
-    val quietHoursLabel: String = "22:00 - 07:00",
-    val deadlineReminderTemplates: List<DeadlineReminder> = emptyList(),
+    val quietStartHour: Int = 22,
+    val quietStartMinute: Int = 0,
+    val quietEndHour: Int = 7,
+    val quietEndMinute: Int = 0,
     val backupInfo: BackupInfo = BackupInfo(),
     val dailyNudgeEnabled: Boolean = false,
     val dailyNudgeHour: Int = 9,
@@ -79,13 +80,10 @@ class SettingsViewModel @Inject constructor(
             reminderEnabled = settings.reminderEnabled,
             reminderIntervalMinutes = settings.reminderIntervalMinutes,
             reminderVibrate = settings.reminderVibrate,
-            quietHoursLabel = "%02d:%02d - %02d:%02d".format(
-                settings.quietStartHour,
-                settings.quietStartMinute,
-                settings.quietEndHour,
-                settings.quietEndMinute,
-            ),
-            deadlineReminderTemplates = settings.deadlineReminderTemplates,
+            quietStartHour = settings.quietStartHour,
+            quietStartMinute = settings.quietStartMinute,
+            quietEndHour = settings.quietEndHour,
+            quietEndMinute = settings.quietEndMinute,
             backupInfo = backupInfoFor(grant),
             dailyNudgeEnabled = settings.dailyNudgeEnabled,
             dailyNudgeHour = settings.dailyNudgeHour,
@@ -122,25 +120,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.updateReminderVibrate(enabled) }
     }
 
-    fun shiftDeadlineTemplate(index: Int, deltaSeconds: Long) {
+    fun onQuietHoursChange(startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) {
         viewModelScope.launch {
-            val current = settingsRepository.current().deadlineReminderTemplates.toMutableList()
-            if (index !in current.indices) return@launch
-            val item = current[index]
-            current[index] = item.copy(offsetSeconds = item.offsetSeconds + deltaSeconds)
-            settingsRepository.updateDeadlineReminderTemplates(current)
-        }
-    }
-
-    fun shiftQuietHours(hoursDelta: Int) {
-        viewModelScope.launch {
-            val current = settingsRepository.current()
-            settingsRepository.updateQuietHours(
-                startHour = (current.quietStartHour + hoursDelta).floorMod(24),
-                startMinute = current.quietStartMinute,
-                endHour = (current.quietEndHour + hoursDelta).floorMod(24),
-                endMinute = current.quietEndMinute,
-            )
+            settingsRepository.updateQuietHours(startHour, startMinute, endHour, endMinute)
         }
     }
 

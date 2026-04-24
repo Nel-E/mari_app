@@ -43,9 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -181,35 +178,14 @@ fun SettingsScreen(
                     )
                 },
             )
-            SectionTitle("Deadline Reminder Templates")
-            uiState.deadlineReminderTemplates.forEachIndexed { index, template ->
-                ListItem(
-                    headlineContent = {
-                        Text(template.label?.ifBlank { "Template ${index + 1}" } ?: "Template ${index + 1}")
-                    },
-                    supportingContent = { Text("${template.offsetSeconds / 60} min from due time") },
-                    trailingContent = {
-                        Row {
-                            TextButton(onClick = { viewModel.shiftDeadlineTemplate(index, -3600) }) { Text("-1h") }
-                            TextButton(onClick = { viewModel.shiftDeadlineTemplate(index, 3600) }) { Text("+1h") }
-                        }
-                    },
-                )
-            }
-            ListItem(
-                headlineContent = { Text("Quiet hours") },
-                supportingContent = {
-                    Text(
-                        text = uiState.quietHoursLabel,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                    )
-                },
-                trailingContent = {
-                    Row {
-                        TextButton(onClick = { viewModel.shiftQuietHours(-1) }) { Text("-1h") }
-                        TextButton(onClick = { viewModel.shiftQuietHours(1) }) { Text("+1h") }
-                    }
-                },
+            HorizontalDivider()
+            SectionTitle("Do Not Disturb")
+            QuietHoursSection(
+                startHour = uiState.quietStartHour,
+                startMinute = uiState.quietStartMinute,
+                endHour = uiState.quietEndHour,
+                endMinute = uiState.quietEndMinute,
+                onRangeChange = viewModel::onQuietHoursChange,
             )
             HorizontalDivider()
             SectionTitle("Daily Task Reminder")
@@ -358,6 +334,68 @@ private fun DailyNudgeSection(
             },
             dismissButton = {
                 TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            },
+            text = { TimePicker(state = state) },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuietHoursSection(
+    startHour: Int,
+    startMinute: Int,
+    endHour: Int,
+    endMinute: Int,
+    onRangeChange: (startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) -> Unit,
+) {
+    var showStartPicker by remember { mutableStateOf(false) }
+    var showEndPicker by remember { mutableStateOf(false) }
+
+    ListItem(
+        headlineContent = { Text("From") },
+        supportingContent = { Text("%02d:%02d".format(startHour, startMinute)) },
+        trailingContent = {
+            TextButton(onClick = { showStartPicker = true }) { Text("Change") }
+        },
+    )
+    ListItem(
+        headlineContent = { Text("To") },
+        supportingContent = { Text("%02d:%02d".format(endHour, endMinute)) },
+        trailingContent = {
+            TextButton(onClick = { showEndPicker = true }) { Text("Change") }
+        },
+    )
+
+    if (showStartPicker) {
+        val state = rememberTimePickerState(initialHour = startHour, initialMinute = startMinute, is24Hour = true)
+        AlertDialog(
+            onDismissRequest = { showStartPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRangeChange(state.hour, state.minute, endHour, endMinute)
+                    showStartPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartPicker = false }) { Text("Cancel") }
+            },
+            text = { TimePicker(state = state) },
+        )
+    }
+
+    if (showEndPicker) {
+        val state = rememberTimePickerState(initialHour = endHour, initialMinute = endMinute, is24Hour = true)
+        AlertDialog(
+            onDismissRequest = { showEndPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRangeChange(startHour, startMinute, state.hour, state.minute)
+                    showEndPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndPicker = false }) { Text("Cancel") }
             },
             text = { TimePicker(state = state) },
         )
