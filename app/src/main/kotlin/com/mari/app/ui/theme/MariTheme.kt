@@ -1,12 +1,17 @@
 package com.mari.app.ui.theme
 
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 
-private val LightColorScheme = lightColorScheme(
+private val MariLightColorScheme = lightColorScheme(
     primary = MariPurple,
     onPrimary = Color.White,
     primaryContainer = MariPurpleContainer,
@@ -30,14 +35,14 @@ private val LightColorScheme = lightColorScheme(
     outline = Color(0xFF79747E),
 )
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFD0BCFF),
-    onPrimary = Color(0xFF381E72),
-    primaryContainer = Color(0xFF4F378B),
+private val MariDarkColorScheme = darkColorScheme(
+    primary = Color(0xFFC8C2FF),
+    onPrimary = Color(0xFF2D2878),
+    primaryContainer = Color(0xFF453FA0),
     onPrimaryContainer = MariPurpleContainer,
-    secondary = Color(0xFF96D97B),
-    onSecondary = Color(0xFF0A3900),
-    secondaryContainer = Color(0xFF1E5200),
+    secondary = Color(0xFF7FDBC8),
+    onSecondary = Color(0xFF003730),
+    secondaryContainer = Color(0xFF005047),
     onSecondaryContainer = MariGreenContainer,
     tertiary = Color(0xFFFFB963),
     onTertiary = Color(0xFF4A2800),
@@ -56,12 +61,24 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun MariTheme(
-    darkTheme: Boolean = false,
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    useDynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
+    val context = LocalContext.current
+    val colors = when {
+        useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+
+        darkTheme -> MariDarkColorScheme
+        else -> MariLightColorScheme
+    }
+
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
+        colorScheme = colors,
         typography = MariTypography,
+        shapes = MariShapes,
         content = content,
     )
 }

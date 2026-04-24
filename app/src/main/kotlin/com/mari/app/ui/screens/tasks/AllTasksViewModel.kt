@@ -178,6 +178,17 @@ class AllTasksViewModel @Inject constructor(
         }
     }
 
+    fun onConfirmPermanentDelete() {
+        val task = _pendingDeleteTask.value ?: return
+        _pendingDeleteTask.value = null
+        viewModelScope.launch {
+            repository.update { tasks ->
+                tasks.filterNot { it.id == task.id }
+            }
+            deadlineReminderScheduler.cancel(task.id)
+        }
+    }
+
     fun onDismissConflict() {
         _executingConflict.value = null
     }

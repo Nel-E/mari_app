@@ -1,6 +1,7 @@
 package com.mari.app.ui.screens.add
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -10,8 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -23,15 +27,24 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mari.app.ui.common.AppSingleDatePickerDialog
+import com.mari.app.ui.common.ColorUtils
+import com.mari.app.ui.common.colourpicker.ColourPickerDialog
 import com.mari.shared.domain.DuePreset
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -41,6 +54,8 @@ fun AddTaskScreen(
     viewModel: AddTaskViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showColorPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.saved) {
         if (uiState.saved) onNavigateUp()
@@ -105,10 +120,14 @@ fun AddTaskScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.dueDateText,
-                    onValueChange = viewModel::onDueDateChange,
-                    label = { Text("Date (YYYY-MM-DD)") },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Date") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    trailingIcon = {
+                        TextButton(onClick = { showDatePicker = true }) { Text("Pick") }
+                    },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -145,13 +164,30 @@ fun AddTaskScreen(
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
                 value = uiState.colorHex,
-                onValueChange = viewModel::onColorChange,
-                label = { Text("Color hex") },
-                placeholder = { Text("#FF8A65") },
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Task color") },
                 isError = uiState.colorError != null,
                 supportingText = uiState.colorError?.let { { Text(it) } },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                leadingIcon = {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                ColorUtils.parseHexOrFallback(
+                                    uiState.colorHex,
+                                    Color(0xFFB0BEC5),
+                                ),
+                            ),
+                    ) {
+                    }
+                },
+                trailingIcon = {
+                    TextButton(onClick = { showColorPicker = true }) { Text("Pick") }
+                },
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text("Reminder templates")
@@ -178,6 +214,29 @@ fun AddTaskScreen(
                 Text(if (uiState.isSaving) "Saving..." else "Save Task")
             }
         }
+    }
+
+    if (showDatePicker) {
+        AppSingleDatePickerDialog(
+            currentIsoDate = uiState.dueDateText,
+            onDismiss = { showDatePicker = false },
+            onConfirm = {
+                viewModel.onDueDateChange(it)
+                showDatePicker = false
+            },
+        )
+    }
+
+    if (showColorPicker) {
+        ColourPickerDialog(
+            initialColorHex = uiState.colorHex.ifBlank { "#5C6BC0" },
+            showAlphaField = false,
+            onDismiss = { showColorPicker = false },
+            onConfirm = {
+                viewModel.onColorChange(it)
+                showColorPicker = false
+            },
+        )
     }
 }
 

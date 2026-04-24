@@ -3,12 +3,16 @@ package com.mari.app.ui.screens.tasks
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -25,8 +29,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.mari.app.ui.common.AppSingleDatePickerDialog
+import com.mari.app.ui.common.ColorUtils
+import com.mari.app.ui.common.colourpicker.ColourPickerDialog
 import com.mari.shared.domain.DeadlineReminder
 import com.mari.shared.domain.DueDateResolver
 import com.mari.shared.domain.DueKind
@@ -62,6 +71,8 @@ fun EditTaskSheet(
     var descriptionError by remember(task.id) { mutableStateOf<String?>(null) }
     var formError by remember(task.id) { mutableStateOf<String?>(null) }
     var showStatusSheet by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showColorPicker by remember { mutableStateOf(false) }
     var pendingStatus by remember(task.id) { mutableStateOf(task.status) }
     var selectedReminderOffsets by remember(task.id) { mutableStateOf(task.deadlineReminders.map { it.offsetSeconds }.toSet()) }
 
@@ -106,10 +117,14 @@ fun EditTaskSheet(
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = dueDateText,
-                    onValueChange = { dueDateText = it },
-                    label = { Text("Date (YYYY-MM-DD)") },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Date") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    trailingIcon = {
+                        TextButton(onClick = { showDatePicker = true }) { Text("Pick") }
+                    },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -142,10 +157,27 @@ fun EditTaskSheet(
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = colorHex,
-                onValueChange = { colorHex = it },
-                label = { Text("Color hex") },
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Task color") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                leadingIcon = {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                ColorUtils.parseHexOrFallback(
+                                    colorHex,
+                                    Color(0xFFB0BEC5),
+                                ),
+                            ),
+                    )
+                },
+                trailingIcon = {
+                    TextButton(onClick = { showColorPicker = true }) { Text("Pick") }
+                },
             )
             Spacer(modifier = Modifier.height(12.dp))
             reminderTemplates.forEach { reminder ->
@@ -244,6 +276,29 @@ fun EditTaskSheet(
                 showStatusSheet = false
             },
             onDismiss = { showStatusSheet = false },
+        )
+    }
+
+    if (showDatePicker) {
+        AppSingleDatePickerDialog(
+            currentIsoDate = dueDateText,
+            onDismiss = { showDatePicker = false },
+            onConfirm = {
+                dueDateText = it
+                showDatePicker = false
+            },
+        )
+    }
+
+    if (showColorPicker) {
+        ColourPickerDialog(
+            initialColorHex = colorHex.ifBlank { "#5C6BC0" },
+            showAlphaField = false,
+            onDismiss = { showColorPicker = false },
+            onConfirm = {
+                colorHex = it
+                showColorPicker = false
+            },
         )
     }
 }

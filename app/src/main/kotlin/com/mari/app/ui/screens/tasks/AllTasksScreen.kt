@@ -91,7 +91,8 @@ fun AllTasksScreen(
     uiState.pendingDeleteTask?.let { task ->
         DeleteConfirmDialog(
             taskDescription = task.name,
-            onConfirm = viewModel::onConfirmDelete,
+            onSoftDelete = viewModel::onConfirmDelete,
+            onPermanentDelete = viewModel::onConfirmPermanentDelete,
             onDismiss = viewModel::onDismissDelete,
         )
     }

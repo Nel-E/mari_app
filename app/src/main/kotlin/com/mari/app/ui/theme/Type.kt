@@ -18,7 +18,7 @@ val MariTypography = Typography(
     ),
     titleMedium = TextStyle(
         fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
+        fontSize = 17.sp,
         lineHeight = 24.sp,
     ),
     bodyLarge = TextStyle(
@@ -32,7 +32,7 @@ val MariTypography = Typography(
         lineHeight = 20.sp,
     ),
     labelLarge = TextStyle(
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         lineHeight = 20.sp,
     ),
