@@ -15,6 +15,7 @@ import com.mari.shared.domain.DuePreset
 import com.mari.shared.domain.toSimpleDueKind
 import com.mari.shared.domain.ExecutionRules
 import com.mari.shared.domain.TaskColor
+import com.mari.shared.domain.TaskPriority
 import com.mari.shared.domain.TaskValidation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
@@ -39,6 +40,7 @@ data class AddTaskUiState(
     val dueMonthText: String = "",
     val dueYearText: String = "",
     val duePreview: String? = null,
+    val priority: TaskPriority = TaskPriority.NORMAL,
     val colorHex: String = "",
     val colorError: String? = null,
     val reminderTemplates: List<DeadlineReminder> = PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES,
@@ -97,6 +99,10 @@ class AddTaskViewModel @Inject constructor(
     fun onDueYearChange(text: String) {
         _uiState.update { it.copy(dueYearText = text, formError = null) }
         updateDuePreview()
+    }
+
+    fun onPriorityChange(priority: TaskPriority) {
+        _uiState.update { it.copy(priority = priority) }
     }
 
     fun onColorChange(text: String) {
@@ -161,6 +167,7 @@ class AddTaskViewModel @Inject constructor(
                     dueAt = dueSelection?.second,
                     dueKind = dueSelection?.first,
                     deadlineReminders = selectedReminders,
+                    priority = state.priority,
                     colorHex = colorHexNormalized,
                 )
                 tasks + createdTask

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Slider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -46,6 +47,7 @@ import com.mari.app.ui.common.AppSingleDatePickerDialog
 import com.mari.app.ui.common.ColorUtils
 import com.mari.app.ui.common.colourpicker.ColourPickerDialog
 import com.mari.shared.domain.DuePreset
+import com.mari.shared.domain.TaskPriority
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -162,6 +164,19 @@ fun AddTaskScreen(
                 Text("Due: $it")
             }
             Spacer(modifier = Modifier.height(16.dp))
+            Text("Priority")
+            Slider(
+                value = uiState.priority.ordinal.toFloat(),
+                onValueChange = {
+                    viewModel.onPriorityChange(
+                        TaskPriority.entries[it.toInt().coerceIn(0, TaskPriority.entries.lastIndex)]
+                    )
+                },
+                valueRange = 0f..TaskPriority.entries.lastIndex.toFloat(),
+                steps = TaskPriority.entries.size - 2,
+            )
+            Text(uiState.priority.label())
+            Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
                 value = uiState.colorHex,
                 onValueChange = {},
@@ -238,6 +253,13 @@ fun AddTaskScreen(
             },
         )
     }
+}
+
+private fun TaskPriority.label(): String = when (this) {
+    TaskPriority.LOW -> "Low"
+    TaskPriority.NORMAL -> "Normal"
+    TaskPriority.HIGH -> "High"
+    TaskPriority.VERY_HIGH -> "Very high"
 }
 
 private fun DuePreset.label(): String = when (this) {
