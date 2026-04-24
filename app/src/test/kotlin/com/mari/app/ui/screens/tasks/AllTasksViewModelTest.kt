@@ -257,4 +257,8 @@ private class FakeAllTasksRepo(private val flow: MutableStateFlow<List<Task>>) :
         flow.value = transform(flow.value)
         return Result.success(Unit)
     }
+    override suspend fun delete(taskId: String): Result<Unit> {
+        flow.value = flow.value.filterNot { it.id == taskId }
+        return Result.success(Unit)
+    }
 }

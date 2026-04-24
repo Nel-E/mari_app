@@ -147,7 +147,7 @@ class AppUpdateCheckWorkerTest {
         sha256 = "abc123", releasedAt = "2026-01-01T00:00:00Z",
         notificationTitle = "Update available",
         notificationText = "Version 1.0.$versionCode is ready",
-        changelog = null, downloadUrl = "http://192.168.1.50:8000/api/app-update/artifacts/stable/phone/mari-$versionCode.apk",
+        changelog = null, downloadUrl = "http://192.168.1.10:8000/api/app-update/artifacts/stable/phone/mari-$versionCode.apk",
     )
 }
 

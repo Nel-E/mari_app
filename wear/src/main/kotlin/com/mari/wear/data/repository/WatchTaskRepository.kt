@@ -42,6 +42,18 @@ class WatchTaskRepository @Inject constructor(
             }
         }
 
+    override suspend fun delete(taskId: String): Result<Unit> =
+        mutex.withLock {
+            val newTasks = _tasks.value.filterNot { it.id == taskId }
+            val seeded = Seeding.ensureSeedTask(newTasks, SystemClock, DeviceId.WATCH)
+            val current = storage.load()
+                .getOrElse { TaskFile(tasks = seeded, settings = FileSettings(deviceId = "watch")) }
+                .copy(tasks = seeded)
+            storage.save(current).also { result ->
+                if (result.isSuccess) _tasks.value = seeded
+            }
+        }
+
     suspend fun init() = mutex.withLock {
         if (!storage.exists()) {
             val initial = storage.initialFile()

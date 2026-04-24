@@ -49,6 +49,22 @@ class FileTaskRepository @Inject constructor(
             }
         }
 
+    override suspend fun delete(taskId: String): Result<Unit> =
+        mutex.withLock {
+            val grant = safManager.grant.value
+            if (grant !is SafGrant.Granted) return Result.failure(StorageError.NoGrant)
+
+            val newTasks = _tasks.value.filterNot { it.id == taskId }
+            val seeded = Seeding.ensureSeedTask(newTasks, SystemClock, DeviceId.PHONE)
+            val current = storage.load(grant.treeUri)
+                .getOrElse { TaskFile(tasks = seeded) }
+                .copy(tasks = seeded)
+
+            storage.save(grant.treeUri, current).also { result ->
+                if (result.isSuccess) _tasks.value = seeded
+            }
+        }
+
     suspend fun init() {
         safManager.init()
         val grant = safManager.grant.value

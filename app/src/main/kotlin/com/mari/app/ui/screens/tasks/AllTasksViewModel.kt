@@ -15,6 +15,7 @@ import com.mari.shared.domain.TaskColor
 import com.mari.shared.domain.TaskListing
 import com.mari.shared.domain.TaskStatus
 import com.mari.shared.domain.TaskValidation
+import android.util.Log
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import javax.inject.Inject
@@ -171,8 +172,13 @@ class AllTasksViewModel @Inject constructor(
     fun onPermanentDeleteTask(task: Task) {
         _selectedTask.value = null
         viewModelScope.launch {
-            repository.update { tasks -> tasks.filterNot { it.id == task.id } }
-            deadlineReminderScheduler.cancel(task.id)
+            val result = repository.delete(task.id)
+            if (result.isFailure) {
+                Log.e("AllTasksVM", "Delete failed for task ${task.id}: ${result.exceptionOrNull()}")
+                _editError.value = "Delete failed: ${result.exceptionOrNull()?.message ?: "Storage error"}"
+            } else {
+                deadlineReminderScheduler.cancel(task.id)
+            }
         }
     }
 

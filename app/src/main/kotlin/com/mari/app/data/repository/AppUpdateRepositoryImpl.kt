@@ -10,6 +10,7 @@ import com.mari.app.domain.model.AppUpdateLocalState
 import com.mari.app.domain.model.AppUpdateReleaseNote
 import com.mari.app.domain.model.UpdateTrack
 import com.mari.app.domain.repository.AppUpdateRepository
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,8 +35,10 @@ class AppUpdateRepositoryImpl @Inject constructor(
     override suspend fun checkForUpdate(forceNotify: Boolean) {
         val current = state.value
         val track = current.track
+        Log.d("AppUpdateRepo", "checkForUpdate: track=${track.wire}, installedCode=${BuildConfig.VERSION_CODE}, force=$forceNotify")
         runCatching {
             val dto = api.getLatest(track.wire, "phone")
+            Log.d("AppUpdateRepo", "API response: versionCode=${dto.versionCode}, eligible=${isEligible(dto)}")
             localStore.setLastCheckAt(Instant.now().toString())
 
             if (!isEligible(dto)) {
@@ -54,6 +57,9 @@ class AppUpdateRepositoryImpl @Inject constructor(
             val info = dto.toAppUpdateInfo(downloadUrl)
             localStore.setAvailableUpdate(info)
             localStore.setReleaseNotes(releaseNotes)
+            Log.d("AppUpdateRepo", "Update available: ${info.versionName} (${info.versionCode})")
+        }.onFailure { e ->
+            Log.e("AppUpdateRepo", "checkForUpdate failed: ${e.message}", e)
         }
     }
 

@@ -23,7 +23,7 @@ android {
         versionName = "1.0.2"
         buildConfigField("long", "BUILD_TIME_MS", "${System.currentTimeMillis()}L")
 
-        val mariApiBaseUrl = project.findProperty("MARI_API_BASE_URL") as String? ?: "http://192.168.1.50:8000/"
+        val mariApiBaseUrl = project.findProperty("MARI_API_BASE_URL") as String? ?: "http://192.168.1.10:8000/"
         val mariApiToken = project.findProperty("MARI_API_TOKEN") as String? ?: ""
         buildConfigField("String", "MARI_API_BASE_URL", "\"$mariApiBaseUrl\"")
         buildConfigField("String", "MARI_API_TOKEN", "\"$mariApiToken\"")

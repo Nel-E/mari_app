@@ -192,4 +192,8 @@ private class FakeE2ERepository(
         flow.value = transform(flow.value)
         return Result.success(Unit)
     }
+    override suspend fun delete(taskId: String): Result<Unit> {
+        flow.value = flow.value.filterNot { it.id == taskId }
+        return Result.success(Unit)
+    }
 }
