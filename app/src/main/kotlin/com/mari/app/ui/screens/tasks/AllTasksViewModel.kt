@@ -32,6 +32,7 @@ data class AllTasksUiState(
     val selectedTask: Task? = null,
     val pendingDeleteTask: Task? = null,
     val executingConflict: ExecutingConflict? = null,
+    val editError: String? = null,
 )
 
 data class ExecutingConflict(
@@ -51,20 +52,22 @@ class AllTasksViewModel @Inject constructor(
     private val _selectedTask = MutableStateFlow<Task?>(null)
     private val _pendingDeleteTask = MutableStateFlow<Task?>(null)
     private val _executingConflict = MutableStateFlow<ExecutingConflict?>(null)
+    private val _editError = MutableStateFlow<String?>(null)
     private val _reminderTemplates = MutableStateFlow(com.mari.app.settings.PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES)
 
     val reminderTemplates: StateFlow<List<DeadlineReminder>> = _reminderTemplates
 
     val uiState: StateFlow<AllTasksUiState> = combine(
-        repository.observeTasks(),
-        _filterState,
-        _selectedTask,
-        _pendingDeleteTask,
-        _executingConflict,
-    ) { tasks, filterState, selectedTask, pendingDeleteTask, executingConflict ->
+        combine(repository.observeTasks(), _filterState, _selectedTask) { tasks, filterState, selectedTask ->
+            Triple(tasks, filterState, selectedTask)
+        },
+        combine(_pendingDeleteTask, _executingConflict, _editError) { pendingDelete, conflict, editError ->
+            Triple(pendingDelete, conflict, editError)
+        },
+    ) { (tasks, filterState, selectedTask), (pendingDeleteTask, executingConflict, editError) ->
         val filtered = TaskListing.filter(tasks, filterState.selectedStatuses, filterState.query)
         val sorted = TaskListing.sort(filtered, filterState.sortMode.shared)
-        AllTasksUiState(sorted, filterState, selectedTask, pendingDeleteTask, executingConflict)
+        AllTasksUiState(sorted, filterState, selectedTask, pendingDeleteTask, executingConflict, editError)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AllTasksUiState())
 
     init {
@@ -96,6 +99,11 @@ class AllTasksViewModel @Inject constructor(
 
     fun onDismissEdit() {
         _selectedTask.value = null
+        _editError.value = null
+    }
+
+    fun onClearEditError() {
+        _editError.value = null
     }
 
     fun onSaveEdit(
@@ -108,9 +116,13 @@ class AllTasksViewModel @Inject constructor(
         reminders: List<DeadlineReminder>,
         colorHex: String?,
     ) {
-        _selectedTask.value = null
         viewModelScope.launch {
-            if (TaskValidation.findDuplicateName(repository.getTasks(), name, excludeId = taskId) != null) return@launch
+            if (TaskValidation.findDuplicateName(repository.getTasks(), name, excludeId = taskId) != null) {
+                _editError.value = "A task with this name already exists"
+                return@launch
+            }
+            _editError.value = null
+            _selectedTask.value = null
             val currentTasks = repository.getTasks()
             if (newStatus == TaskStatus.EXECUTING) {
                 val existing = ExecutionRules.currentlyExecuting(currentTasks)

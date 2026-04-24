@@ -48,6 +48,7 @@ open class SettingsRepository @Inject constructor(
             dailyNudgeEnabled = prefs[KEY_DAILY_NUDGE_ENABLED] ?: false,
             dailyNudgeHour = prefs[KEY_DAILY_NUDGE_HOUR] ?: 9,
             dailyNudgeMinute = prefs[KEY_DAILY_NUDGE_MINUTE] ?: 0,
+            themeMode = prefs[KEY_THEME_MODE]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
         )
     }
 
@@ -119,6 +120,10 @@ open class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun updateThemeMode(mode: ThemeMode) {
+        context.phoneSettingsDataStore.edit { it[KEY_THEME_MODE] = mode.name }
+    }
+
     private fun decodeTemplates(raw: String?): List<DeadlineReminder> {
         if (raw.isNullOrBlank()) return PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES
         return runCatching {
@@ -145,5 +150,6 @@ open class SettingsRepository @Inject constructor(
         val KEY_DAILY_NUDGE_ENABLED = booleanPreferencesKey("daily_nudge_enabled")
         val KEY_DAILY_NUDGE_HOUR = intPreferencesKey("daily_nudge_hour")
         val KEY_DAILY_NUDGE_MINUTE = intPreferencesKey("daily_nudge_minute")
+        val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
     }
 }

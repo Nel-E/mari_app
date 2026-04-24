@@ -24,10 +24,10 @@ fun DeleteConfirmDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Delete task?") },
-        text = { Text("\"$taskDescription\" can be discarded (recoverable) or deleted forever.") },
+        text = { Text("\"$taskDescription\"\n\nArchive keeps the task hidden but recoverable. Delete forever removes it permanently and cannot be undone.") },
         confirmButton = {
             TextButton(onClick = onSoftDelete) {
-                Text("Discard")
+                Text("Archive")
             }
             TextButton(onClick = onPermanentDelete, enabled = confirmEnabled) {
                 Text(permanentDeleteLabel, color = MaterialTheme.colorScheme.error)

@@ -14,6 +14,7 @@ import com.mari.app.domain.model.UpdateTrack
 import com.mari.app.domain.repository.AppUpdateRepository
 import com.mari.app.reminders.DailyNudgeScheduler
 import com.mari.app.settings.SettingsRepository
+import com.mari.app.settings.ThemeMode
 import com.mari.shared.domain.DeadlineReminder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,6 +47,7 @@ data class SettingsUiState(
     val updateAutoCheckEnabled: Boolean = true,
     val updateTrack: UpdateTrack = UpdateTrack.STABLE,
     val availableUpdate: AppUpdateInfo? = null,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
 )
 
 @HiltViewModel
@@ -89,6 +91,7 @@ class SettingsViewModel @Inject constructor(
             updateAutoCheckEnabled = updateState.autoCheckEnabled,
             updateTrack = updateState.track,
             availableUpdate = updateState.availableUpdate,
+            themeMode = settings.themeMode,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -173,6 +176,10 @@ class SettingsViewModel @Inject constructor(
             appUpdateRepository.setTrack(track)
             appUpdateScheduler.reenqueueOnTrackChange(track)
         }
+    }
+
+    fun onThemeModeChange(mode: ThemeMode) {
+        viewModelScope.launch { settingsRepository.updateThemeMode(mode) }
     }
 
     fun onCheckNow() {

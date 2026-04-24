@@ -2,7 +2,6 @@ package com.mari.app.ui.screens.tasks
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,17 +12,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +53,9 @@ import com.mari.shared.domain.toSimpleDueKind
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+private val DISPLAYED_PRESETS = DuePreset.entries.filter { it != DuePreset.MONTH_YEAR }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -55,6 +63,7 @@ fun EditTaskSheet(
     task: Task,
     sheetState: SheetState,
     reminderTemplates: List<DeadlineReminder>,
+    editError: String? = null,
     onSave: (name: String, description: String, status: TaskStatus, dueAt: Instant?, dueKind: DueKind?, reminders: List<DeadlineReminder>, colorHex: String?) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
@@ -62,19 +71,33 @@ fun EditTaskSheet(
     var name by remember(task.id) { mutableStateOf(task.name) }
     var description by remember(task.id) { mutableStateOf(task.description) }
     var colorHex by remember(task.id) { mutableStateOf(task.colorHex.orEmpty()) }
-    var duePreset by remember(task.id) { mutableStateOf(task.dueKind?.preset) }
-    var dueDateText by remember(task.id) { mutableStateOf(task.dueAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.toString().orEmpty()) }
-    var dueTimeText by remember(task.id) { mutableStateOf(task.dueAt?.atZone(ZoneId.systemDefault())?.toLocalTime()?.withSecond(0)?.withNano(0)?.toString().orEmpty()) }
-    var dueMonthText by remember(task.id) { mutableStateOf((task.dueKind as? DueKind.MonthYear)?.month?.toString().orEmpty()) }
-    var dueYearText by remember(task.id) { mutableStateOf((task.dueKind as? DueKind.MonthYear)?.year?.toString().orEmpty()) }
+    var duePreset by remember(task.id) {
+        mutableStateOf(task.dueKind?.preset?.takeIf { it != DuePreset.MONTH_YEAR })
+    }
+    var dueDateText by remember(task.id) {
+        mutableStateOf(task.dueAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.toString().orEmpty())
+    }
+    var dueTimeText by remember(task.id) {
+        mutableStateOf(
+            task.dueAt?.atZone(ZoneId.systemDefault())
+                ?.toLocalTime()?.withSecond(0)?.withNano(0)?.toString().orEmpty()
+        )
+    }
     var nameError by remember(task.id) { mutableStateOf<String?>(null) }
     var descriptionError by remember(task.id) { mutableStateOf<String?>(null) }
     var formError by remember(task.id) { mutableStateOf<String?>(null) }
     var showStatusSheet by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
+    var deadlineDropdownExpanded by remember { mutableStateOf(false) }
     var pendingStatus by remember(task.id) { mutableStateOf(task.status) }
-    var selectedReminderOffsets by remember(task.id) { mutableStateOf(task.deadlineReminders.map { it.offsetSeconds }.toSet()) }
+    var selectedReminderOffsets by remember(task.id) {
+        mutableStateOf(task.deadlineReminders.map { it.offsetSeconds }.toSet())
+    }
+
+    // Show external save error (e.g. duplicate name surfaced from ViewModel)
+    val displayedFormError = editError ?: formError
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -105,55 +128,66 @@ fun EditTaskSheet(
                 minLines = 2,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Text("Deadline")
-            Spacer(modifier = Modifier.height(8.dp))
-            FlowRow {
-                FilterChip(selected = duePreset == null, onClick = { duePreset = null }, label = { Text("None") })
-                DuePreset.entries.forEach { preset ->
-                    FilterChip(selected = duePreset == preset, onClick = { duePreset = preset }, label = { Text(preset.label()) })
-                }
-            }
-            if (duePreset == DuePreset.SPECIFIC_DAY) {
-                Spacer(modifier = Modifier.height(8.dp))
+
+            // Deadline dropdown
+            val deadlineLabel = duePreset?.label() ?: "None"
+            ExposedDropdownMenuBox(
+                expanded = deadlineDropdownExpanded,
+                onExpandedChange = { deadlineDropdownExpanded = it },
+            ) {
                 OutlinedTextField(
-                    value = dueDateText,
+                    value = deadlineLabel,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Date") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    trailingIcon = {
-                        TextButton(onClick = { showDatePicker = true }) { Text("Pick") }
-                    },
+                    label = { Text("Deadline") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = deadlineDropdownExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = dueTimeText,
-                    onValueChange = { dueTimeText = it },
-                    label = { Text("Time (HH:MM, optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-            }
-            if (duePreset == DuePreset.MONTH_YEAR) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row {
-                    OutlinedTextField(
-                        value = dueMonthText,
-                        onValueChange = { dueMonthText = it },
-                        label = { Text("Month") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
+                ExposedDropdownMenu(
+                    expanded = deadlineDropdownExpanded,
+                    onDismissRequest = { deadlineDropdownExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("None") },
+                        onClick = {
+                            duePreset = null
+                            dueDateText = ""
+                            dueTimeText = ""
+                            deadlineDropdownExpanded = false
+                        },
                     )
-                    OutlinedTextField(
-                        value = dueYearText,
-                        onValueChange = { dueYearText = it },
-                        label = { Text("Year") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                    )
+                    DISPLAYED_PRESETS.forEach { preset ->
+                        DropdownMenuItem(
+                            text = { Text(preset.label()) },
+                            onClick = {
+                                duePreset = preset
+                                deadlineDropdownExpanded = false
+                                if (preset == DuePreset.SPECIFIC_DAY) {
+                                    showDatePicker = true
+                                }
+                            },
+                        )
+                    }
                 }
             }
+
+            // Show picked date+time summary for SPECIFIC_DAY
+            if (duePreset == DuePreset.SPECIFIC_DAY && dueDateText.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    val timeDisplay = dueTimeText.ifBlank { "08:00" }
+                    Text(
+                        text = formatDateTimeSummary(dueDateText, timeDisplay),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { showDatePicker = true }) { Text("Change") }
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = colorHex,
@@ -180,15 +214,29 @@ fun EditTaskSheet(
                 },
             )
             Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                "Deadline notifications",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
             reminderTemplates.forEach { reminder ->
                 Row {
                     Checkbox(
                         checked = reminder.offsetSeconds in selectedReminderOffsets,
                         onCheckedChange = { checked ->
-                            selectedReminderOffsets = if (checked) selectedReminderOffsets + reminder.offsetSeconds else selectedReminderOffsets - reminder.offsetSeconds
+                            selectedReminderOffsets = if (checked) {
+                                selectedReminderOffsets + reminder.offsetSeconds
+                            } else {
+                                selectedReminderOffsets - reminder.offsetSeconds
+                            }
                         },
                     )
-                    Text(reminder.label ?: "${reminder.offsetSeconds}s")
+                    Text(
+                        reminder.label ?: "${reminder.offsetSeconds}s",
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -212,20 +260,22 @@ fun EditTaskSheet(
                         descriptionError = validatedDescription.exceptionOrNull()?.message
                         return@Button
                     }
+                    val effectiveTimeText = if (duePreset == DuePreset.SPECIFIC_DAY) {
+                        dueTimeText.ifBlank { "08:00" }
+                    } else {
+                        dueTimeText
+                    }
                     val dueSelection = runCatching {
                         when (duePreset) {
                             null -> null
                             DuePreset.SPECIFIC_DAY -> {
                                 val kind = DueKind.SpecificDay(
                                     dateIso = LocalDate.parse(dueDateText).toString(),
-                                    timeHhmm = dueTimeText.takeIf { it.isNotBlank() },
+                                    timeHhmm = effectiveTimeText.takeIf { it.isNotBlank() },
                                 )
                                 kind to DueDateResolver.resolve(kind, Instant.now(), ZoneId.systemDefault())
                             }
-                            DuePreset.MONTH_YEAR -> {
-                                val kind = DueKind.MonthYear(month = dueMonthText.toInt(), year = dueYearText.toInt())
-                                kind to DueDateResolver.resolve(kind, Instant.now(), ZoneId.systemDefault())
-                            }
+                            DuePreset.MONTH_YEAR -> null
                             else -> duePreset!!.toSimpleDueKind()?.let { kind ->
                                 kind to DueDateResolver.resolve(kind, Instant.now(), ZoneId.systemDefault())
                             }
@@ -253,7 +303,7 @@ fun EditTaskSheet(
             ) {
                 Text("Save")
             }
-            formError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            displayedFormError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(
                 onClick = onDelete,
@@ -286,7 +336,35 @@ fun EditTaskSheet(
             onConfirm = {
                 dueDateText = it
                 showDatePicker = false
+                showTimePicker = true
             },
+        )
+    }
+
+    if (showTimePicker) {
+        val initialHour = dueTimeText.parseHour() ?: 8
+        val initialMinute = dueTimeText.parseMinute() ?: 0
+        val timeState = rememberTimePickerState(
+            initialHour = initialHour,
+            initialMinute = initialMinute,
+            is24Hour = true,
+        )
+        AlertDialog(
+            onDismissRequest = {
+                // User cancelled — keep default 08:00 (blank = default applied at save)
+                showTimePicker = false
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    dueTimeText = "%02d:%02d".format(timeState.hour, timeState.minute)
+                    showTimePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Skip") }
+            },
+            title = { Text("Pick time (optional)") },
+            text = { TimePicker(state = timeState) },
         )
     }
 
@@ -320,3 +398,19 @@ private fun DuePreset.label(): String = when (this) {
     DuePreset.NEXT_MONTH -> "Next month"
     DuePreset.MONTH_YEAR -> "Month + year"
 }
+
+private fun formatDateTimeSummary(dateIso: String, timeHhmm: String): String {
+    return runCatching {
+        val date = LocalDate.parse(dateIso)
+        val formatted = date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+        "$formatted at $timeHhmm"
+    }.getOrDefault("$dateIso at $timeHhmm")
+}
+
+private fun String.parseHour(): Int? = runCatching {
+    split(":").first().toInt().coerceIn(0, 23)
+}.getOrNull()
+
+private fun String.parseMinute(): Int? = runCatching {
+    split(":").getOrNull(1)?.toInt()?.coerceIn(0, 59)
+}.getOrNull()

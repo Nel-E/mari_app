@@ -4,6 +4,8 @@ import com.mari.app.reminders.QuietWindow
 import com.mari.app.shake.ShakeConfig
 import com.mari.shared.domain.DeadlineReminder
 
+enum class ThemeMode { LIGHT, DARK, SYSTEM }
+
 data class PhoneSettings(
     val shakeStrength: Float = 15f,
     val shakeDurationMs: Long = 300L,
@@ -21,6 +23,7 @@ data class PhoneSettings(
     val dailyNudgeEnabled: Boolean = false,
     val dailyNudgeHour: Int = 9,
     val dailyNudgeMinute: Int = 0,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
 ) {
     val shakeConfig: ShakeConfig
         get() = ShakeConfig(
