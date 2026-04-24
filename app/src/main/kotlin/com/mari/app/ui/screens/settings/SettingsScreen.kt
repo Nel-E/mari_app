@@ -47,7 +47,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mari.app.BuildConfig
+import com.mari.app.ui.common.CircularTimeRangePicker
 import com.mari.app.ui.common.ColorUtils
+import com.mari.app.ui.common.TimeValue
 import com.mari.app.ui.common.colourpicker.ColourPickerDialog
 import com.mari.shared.domain.TaskPriority
 import java.text.SimpleDateFormat
@@ -340,7 +342,6 @@ private fun DailyNudgeSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun QuietHoursSection(
     startHour: Int,
@@ -349,57 +350,14 @@ private fun QuietHoursSection(
     endMinute: Int,
     onRangeChange: (startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) -> Unit,
 ) {
-    var showStartPicker by remember { mutableStateOf(false) }
-    var showEndPicker by remember { mutableStateOf(false) }
-
-    ListItem(
-        headlineContent = { Text("From") },
-        supportingContent = { Text("%02d:%02d".format(startHour, startMinute)) },
-        trailingContent = {
-            TextButton(onClick = { showStartPicker = true }) { Text("Change") }
+    CircularTimeRangePicker(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        initialStart = TimeValue(startHour, startMinute),
+        initialEnd = TimeValue(endHour, endMinute),
+        onRangeChanged = { start, end ->
+            onRangeChange(start.hours, start.minutes, end.hours, end.minutes)
         },
     )
-    ListItem(
-        headlineContent = { Text("To") },
-        supportingContent = { Text("%02d:%02d".format(endHour, endMinute)) },
-        trailingContent = {
-            TextButton(onClick = { showEndPicker = true }) { Text("Change") }
-        },
-    )
-
-    if (showStartPicker) {
-        val state = rememberTimePickerState(initialHour = startHour, initialMinute = startMinute, is24Hour = true)
-        AlertDialog(
-            onDismissRequest = { showStartPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    onRangeChange(state.hour, state.minute, endHour, endMinute)
-                    showStartPicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showStartPicker = false }) { Text("Cancel") }
-            },
-            text = { TimePicker(state = state) },
-        )
-    }
-
-    if (showEndPicker) {
-        val state = rememberTimePickerState(initialHour = endHour, initialMinute = endMinute, is24Hour = true)
-        AlertDialog(
-            onDismissRequest = { showEndPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    onRangeChange(startHour, startMinute, state.hour, state.minute)
-                    showEndPicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEndPicker = false }) { Text("Cancel") }
-            },
-            text = { TimePicker(state = state) },
-        )
-    }
 }
 
 @Composable
