@@ -11,6 +11,8 @@ import java.io.File
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Singleton
 class AppUpdateInstaller @Inject constructor(
@@ -24,7 +26,12 @@ class AppUpdateInstaller @Inject constructor(
         expectedSha256: String,
         onProgress: (downloaded: Long, total: Long) -> Unit = { _, _ -> },
     ): Result<File> = runCatching {
+        withContext(Dispatchers.IO) {
         val response = api.downloadArtifact(track, component, fileName)
+        if (!response.isSuccessful) {
+            response.errorBody()?.close()
+            error("Download failed (HTTP ${response.code()})")
+        }
         val body = response.body() ?: error("Empty response body (HTTP ${response.code()})")
 
         val cacheDir = File(context.cacheDir, "app_updates").also { it.mkdirs() }
@@ -54,6 +61,7 @@ class AppUpdateInstaller @Inject constructor(
         }
 
         outFile
+        }
     }
 
     fun canRequestInstallPackages(): Boolean =
