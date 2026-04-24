@@ -118,7 +118,7 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp.core)
-    debugImplementation(libs.okhttp.logging)
+    implementation(libs.okhttp.logging)
 
     // DocumentFile — SAF helper
     implementation(libs.documentfile)
