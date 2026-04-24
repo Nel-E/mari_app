@@ -160,8 +160,7 @@ class MainViewModel @Inject constructor(
         if (executing != null) return WearCtaState.MarkExecutingComplete(executing)
         val hasPickable = active.any {
             it.status == TaskStatus.TO_BE_DONE ||
-                it.status == TaskStatus.PAUSED ||
-                it.status == TaskStatus.QUEUED
+                it.status == TaskStatus.PAUSED
         }
         return if (hasPickable) WearCtaState.ShakeToPick else WearCtaState.AddTaskOnly
     }

@@ -44,7 +44,7 @@ class SyncEngineTest {
     @Test
     fun `delta queues conflict on divergent edit`() {
         val local = listOf(task(id = "a", version = 3, status = TaskStatus.PAUSED))
-        val incoming = listOf(task(id = "a", version = 4, status = TaskStatus.QUEUED, modifiedBy = DeviceId.WATCH))
+        val incoming = listOf(task(id = "a", version = 4, status = TaskStatus.TO_BE_DONE, modifiedBy = DeviceId.WATCH))
 
         val result = SyncEngine.planForDelta(local, incoming, mapOf("a" to 2))
 

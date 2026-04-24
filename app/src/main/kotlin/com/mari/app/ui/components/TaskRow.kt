@@ -74,12 +74,20 @@ fun TaskRow(
                     Text(
                         text = formatDueText(dueAt),
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (dueAt.isBefore(Instant.now())) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        color = if (dueAt.isBefore(Instant.now())) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
                     )
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
-            StatusChip(status = task.status)
+            Column(horizontalAlignment = Alignment.End) {
+                PriorityChip(priority = task.priority)
+                Spacer(modifier = Modifier.height(4.dp))
+                StatusChip(status = task.status)
+            }
         }
     }
 }

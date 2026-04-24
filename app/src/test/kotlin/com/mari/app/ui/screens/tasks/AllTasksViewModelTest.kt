@@ -10,6 +10,7 @@ import com.mari.shared.domain.DeviceId
 import com.mari.shared.domain.ExecutionRules
 import com.mari.shared.domain.FixedClock
 import com.mari.shared.domain.Task
+import com.mari.shared.domain.TaskPriority
 import com.mari.shared.domain.TaskStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -187,7 +188,10 @@ class AllTasksViewModelTest {
                 dueAt = null,
                 dueKind = null,
                 reminders = emptyList(),
+                priority = TaskPriority.NORMAL,
                 colorHex = null,
+                customColorHex = null,
+                useCustomColor = false,
             )
             val afterSave = awaitItem() // selectedTask cleared
             assertThat(afterSave.selectedTask).isNull()
@@ -198,51 +202,19 @@ class AllTasksViewModelTest {
     }
 
     @Test
-    fun `onRequestDelete sets pendingDeleteTask and closes edit sheet`() = runTest {
+    fun `onPermanentDeleteTask deletes task and closes edit sheet`() = runTest {
         val task = makeTask("1")
         tasksFlow.value = listOf(task)
         val viewModel = vm()
         viewModel.uiState.test {
             awaitItem()
-            viewModel.onRequestDelete(task)
-            val state = awaitItem()
-            assertThat(state.pendingDeleteTask).isEqualTo(task)
-            assertThat(state.selectedTask).isNull()
+            viewModel.onTaskClick(task)
+            awaitItem()
+            viewModel.onPermanentDeleteTask(task)
+            assertThat(awaitItem().selectedTask).isNull()
             cancelAndIgnoreRemainingEvents()
         }
-    }
-
-    @Test
-    fun `onConfirmDelete soft-deletes task`() = runTest {
-        val task = makeTask("1")
-        tasksFlow.value = listOf(task)
-        val viewModel = vm()
-        viewModel.uiState.test {
-            awaitItem()
-            viewModel.onRequestDelete(task)
-            awaitItem()
-            viewModel.onConfirmDelete()
-            val firstAfterDelete = awaitItem()
-            val afterDelete = if (firstAfterDelete.tasks.isEmpty()) firstAfterDelete else awaitItem()
-            assertThat(afterDelete.pendingDeleteTask).isNull()
-            assertThat(afterDelete.tasks).isEmpty()
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `onDismissDelete clears pendingDeleteTask`() = runTest {
-        val task = makeTask("1")
-        tasksFlow.value = listOf(task)
-        val viewModel = vm()
-        viewModel.uiState.test {
-            awaitItem()
-            viewModel.onRequestDelete(task)
-            awaitItem()
-            viewModel.onDismissDelete()
-            assertThat(awaitItem().pendingDeleteTask).isNull()
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertThat(repository.tasks).isEmpty()
     }
 }
 

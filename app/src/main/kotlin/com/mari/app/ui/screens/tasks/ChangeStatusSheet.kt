@@ -44,7 +44,7 @@ fun ChangeStatusSheet(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
             )
-            TaskStatus.entries.forEach { status ->
+            VISIBLE_STATUSES.forEach { status ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -65,11 +65,19 @@ fun ChangeStatusSheet(
     }
 }
 
+private val VISIBLE_STATUSES = listOf(
+    TaskStatus.TO_BE_DONE,
+    TaskStatus.PAUSED,
+    TaskStatus.EXECUTING,
+    TaskStatus.COMPLETED,
+    TaskStatus.DISCARDED,
+)
+
 private fun TaskStatus.label(): String = when (this) {
     TaskStatus.TO_BE_DONE -> "To Do"
     TaskStatus.PAUSED -> "Paused"
     TaskStatus.EXECUTING -> "Executing"
-    TaskStatus.QUEUED -> "Queued"
     TaskStatus.COMPLETED -> "Completed"
     TaskStatus.DISCARDED -> "Discarded"
+    else -> "To Do"
 }

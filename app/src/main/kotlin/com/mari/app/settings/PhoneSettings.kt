@@ -3,6 +3,7 @@ package com.mari.app.settings
 import com.mari.app.reminders.QuietWindow
 import com.mari.app.shake.ShakeConfig
 import com.mari.shared.domain.DeadlineReminder
+import com.mari.shared.domain.TaskPriority
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
 
@@ -24,6 +25,7 @@ data class PhoneSettings(
     val dailyNudgeHour: Int = 9,
     val dailyNudgeMinute: Int = 0,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val priorityColors: Map<TaskPriority, String?> = DEFAULT_PRIORITY_COLORS,
 ) {
     val shakeConfig: ShakeConfig
         get() = ShakeConfig(
@@ -46,5 +48,6 @@ data class PhoneSettings(
             DeadlineReminder(offsetSeconds = -3_600, label = "1 hour before"),
             DeadlineReminder(offsetSeconds = 0, label = "At due time"),
         )
+        val DEFAULT_PRIORITY_COLORS: Map<TaskPriority, String?> = TaskPriority.entries.associateWith { null }
     }
 }

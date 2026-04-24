@@ -31,6 +31,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -53,6 +54,7 @@ import com.mari.shared.domain.DueDateResolver
 import com.mari.shared.domain.DueKind
 import com.mari.shared.domain.DuePreset
 import com.mari.shared.domain.Task
+import com.mari.shared.domain.TaskPriority
 import com.mari.shared.domain.TaskStatus
 import com.mari.shared.domain.TaskValidation
 import com.mari.shared.domain.preset
@@ -70,14 +72,42 @@ fun EditTaskSheet(
     task: Task,
     sheetState: SheetState,
     reminderTemplates: List<DeadlineReminder>,
+    priorityColors: Map<TaskPriority, String?>,
     editError: String? = null,
-    onSave: (name: String, description: String, status: TaskStatus, dueAt: Instant?, dueKind: DueKind?, reminders: List<DeadlineReminder>, colorHex: String?) -> Unit,
+    onSave: (
+        name: String,
+        description: String,
+        status: TaskStatus,
+        dueAt: Instant?,
+        dueKind: DueKind?,
+        reminders: List<DeadlineReminder>,
+        priority: TaskPriority,
+        colorHex: String?,
+        customColorHex: String?,
+        useCustomColor: Boolean,
+    ) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember(task.id) { mutableStateOf(task.name) }
     var description by remember(task.id) { mutableStateOf(task.description) }
-    var colorHex by remember(task.id) { mutableStateOf(task.colorHex.orEmpty()) }
+    val initialPriorityColor = priorityColors[task.priority]
+    val initialCustomColor = task.customColorHex
+        ?: task.colorHex?.takeIf { it != initialPriorityColor }
+    var priority by remember(task.id) { mutableStateOf(task.priority) }
+    var customColorHex by remember(task.id) { mutableStateOf(initialCustomColor.orEmpty()) }
+    var useCustomColor by remember(task.id) {
+        mutableStateOf(task.useCustomColor || initialCustomColor != null)
+    }
+    var colorHex by remember(task.id) {
+        mutableStateOf(
+            if (useCustomColor) {
+                customColorHex
+            } else {
+                priorityColors[priority].orEmpty()
+            },
+        )
+    }
     var duePreset by remember(task.id) {
         mutableStateOf(task.dueKind?.preset?.takeIf { it != DuePreset.MONTH_YEAR })
     }
@@ -106,6 +136,16 @@ fun EditTaskSheet(
 
     // Show external save error (e.g. duplicate name surfaced from ViewModel)
     val displayedFormError = editError ?: formError
+
+    fun applyPriority(nextPriority: TaskPriority) {
+        priority = nextPriority
+        if (!useCustomColor) colorHex = priorityColors[nextPriority].orEmpty()
+    }
+
+    fun applyUseCustomColor(enabled: Boolean) {
+        useCustomColor = enabled
+        colorHex = if (enabled) customColorHex else priorityColors[priority].orEmpty()
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -214,6 +254,25 @@ fun EditTaskSheet(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Priority",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Slider(
+                value = priority.ordinal.toFloat(),
+                onValueChange = {
+                    applyPriority(TaskPriority.entries[it.toInt().coerceIn(0, TaskPriority.entries.lastIndex)])
+                },
+                valueRange = 0f..TaskPriority.entries.lastIndex.toFloat(),
+                steps = TaskPriority.entries.size - 2,
+            )
+            Text(
+                text = priority.label(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = colorHex,
                 onValueChange = {},
@@ -238,6 +297,15 @@ fun EditTaskSheet(
                     TextButton(onClick = { showColorPicker = true }) { Text("Pick") }
                 },
             )
+            if (customColorHex.isNotBlank()) {
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = useCustomColor,
+                        onCheckedChange = ::applyUseCustomColor,
+                    )
+                    Text("Use custom color")
+                }
+            }
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
@@ -321,7 +389,10 @@ fun EditTaskSheet(
                         dueSelection?.second,
                         dueSelection?.first,
                         reminderTemplates.filter { it.offsetSeconds in selectedReminderOffsets },
+                        priority,
                         colorHex.ifBlank { null },
+                        customColorHex.ifBlank { null },
+                        useCustomColor,
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -391,6 +462,8 @@ fun EditTaskSheet(
             showAlphaField = false,
             onDismiss = { showColorPicker = false },
             onConfirm = {
+                customColorHex = it
+                useCustomColor = true
                 colorHex = it
                 showColorPicker = false
             },
@@ -430,9 +503,16 @@ private fun TaskStatus.label(): String = when (this) {
     TaskStatus.TO_BE_DONE -> "To Do"
     TaskStatus.PAUSED -> "Paused"
     TaskStatus.EXECUTING -> "Executing"
-    TaskStatus.QUEUED -> "Queued"
     TaskStatus.COMPLETED -> "Completed"
     TaskStatus.DISCARDED -> "Discarded"
+    else -> "To Do"
+}
+
+private fun TaskPriority.label(): String = when (this) {
+    TaskPriority.LOW -> "Low"
+    TaskPriority.NORMAL -> "Normal"
+    TaskPriority.HIGH -> "High"
+    TaskPriority.VERY_HIGH -> "Very high"
 }
 
 private fun DuePreset.label(): String = when (this) {

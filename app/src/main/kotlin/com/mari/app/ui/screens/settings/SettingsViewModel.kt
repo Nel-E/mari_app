@@ -16,6 +16,7 @@ import com.mari.app.reminders.DailyNudgeScheduler
 import com.mari.app.settings.SettingsRepository
 import com.mari.app.settings.ThemeMode
 import com.mari.shared.domain.DeadlineReminder
+import com.mari.shared.domain.TaskPriority
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.DayOfWeek
@@ -48,6 +49,7 @@ data class SettingsUiState(
     val updateTrack: UpdateTrack = UpdateTrack.STABLE,
     val availableUpdate: AppUpdateInfo? = null,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val priorityColors: Map<TaskPriority, String?> = com.mari.app.settings.PhoneSettings.DEFAULT_PRIORITY_COLORS,
 )
 
 @HiltViewModel
@@ -92,6 +94,7 @@ class SettingsViewModel @Inject constructor(
             updateTrack = updateState.track,
             availableUpdate = updateState.availableUpdate,
             themeMode = settings.themeMode,
+            priorityColors = settings.priorityColors,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -180,6 +183,10 @@ class SettingsViewModel @Inject constructor(
 
     fun onThemeModeChange(mode: ThemeMode) {
         viewModelScope.launch { settingsRepository.updateThemeMode(mode) }
+    }
+
+    fun onPriorityColorChange(priority: TaskPriority, colorHex: String?) {
+        viewModelScope.launch { settingsRepository.updatePriorityColor(priority, colorHex) }
     }
 
     fun onCheckNow() {

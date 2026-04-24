@@ -14,6 +14,9 @@ import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.Text
 import com.mari.shared.domain.Task
+import com.mari.shared.domain.TaskPriority
+import java.time.Duration
+import java.time.Instant
 
 @Composable
 fun AllTasksScreen(
@@ -51,11 +54,33 @@ private fun TaskListContent(
         items(tasks) { task ->
             Chip(
                 label = { Text(task.name, maxLines = 2) },
-                secondaryLabel = { Text(task.status.name.lowercase().replace('_', ' ')) },
+                secondaryLabel = {
+                    Text(
+                        "${task.priority.label()} • " +
+                            (task.dueAt?.let(::formatDueText) ?: task.status.name.lowercase().replace('_', ' ')),
+                    )
+                },
                 onClick = { onTaskClick(task) },
                 colors = ChipDefaults.secondaryChipColors(),
             )
         }
+    }
+}
+
+private fun TaskPriority.label(): String = when (this) {
+    TaskPriority.LOW -> "Low"
+    TaskPriority.NORMAL -> "Normal"
+    TaskPriority.HIGH -> "High"
+    TaskPriority.VERY_HIGH -> "Very high"
+}
+
+private fun formatDueText(dueAt: Instant, now: Instant = Instant.now()): String {
+    val minutes = Duration.between(now, dueAt).toMinutes()
+    return when {
+        minutes < 0 -> "Overdue"
+        minutes < 60 -> "Due ${minutes}m"
+        minutes < 24 * 60 -> "Due ${minutes / 60}h"
+        else -> "Due ${minutes / (24 * 60)}d"
     }
 }
 

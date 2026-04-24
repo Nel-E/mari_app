@@ -12,7 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.mari.shared.domain.TaskStatus
 
-private val FILTER_STATUSES = TaskStatus.entries.toList()
+private val FILTER_STATUSES = listOf(
+    TaskStatus.TO_BE_DONE,
+    TaskStatus.PAUSED,
+    TaskStatus.EXECUTING,
+    TaskStatus.COMPLETED,
+    TaskStatus.DISCARDED,
+)
 
 @Composable
 fun FilterChipsRow(
@@ -40,7 +46,7 @@ private fun TaskStatus.displayName(): String = when (this) {
     TaskStatus.TO_BE_DONE -> "To Do"
     TaskStatus.PAUSED -> "Paused"
     TaskStatus.EXECUTING -> "Executing"
-    TaskStatus.QUEUED -> "Queued"
     TaskStatus.COMPLETED -> "Completed"
     TaskStatus.DISCARDED -> "Discarded"
+    else -> "To Do"
 }

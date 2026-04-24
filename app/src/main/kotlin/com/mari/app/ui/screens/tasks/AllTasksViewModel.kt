@@ -13,6 +13,7 @@ import com.mari.shared.domain.ExecutionRules
 import com.mari.shared.domain.Task
 import com.mari.shared.domain.TaskColor
 import com.mari.shared.domain.TaskListing
+import com.mari.shared.domain.TaskPriority
 import com.mari.shared.domain.TaskStatus
 import com.mari.shared.domain.TaskValidation
 import android.util.Log
@@ -33,6 +34,7 @@ data class AllTasksUiState(
     val selectedTask: Task? = null,
     val executingConflict: ExecutingConflict? = null,
     val editError: String? = null,
+    val priorityColors: Map<TaskPriority, String?> = com.mari.app.settings.PhoneSettings.DEFAULT_PRIORITY_COLORS,
 )
 
 data class ExecutingConflict(
@@ -52,7 +54,10 @@ class AllTasksViewModel @Inject constructor(
     private val _selectedTask = MutableStateFlow<Task?>(null)
     private val _executingConflict = MutableStateFlow<ExecutingConflict?>(null)
     private val _editError = MutableStateFlow<String?>(null)
-    private val _reminderTemplates = MutableStateFlow(com.mari.app.settings.PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES)
+    private val _reminderTemplates = MutableStateFlow(
+        com.mari.app.settings.PhoneSettings.DEFAULT_DEADLINE_REMINDER_TEMPLATES,
+    )
+    private val _priorityColors = MutableStateFlow(com.mari.app.settings.PhoneSettings.DEFAULT_PRIORITY_COLORS)
 
     val reminderTemplates: StateFlow<List<DeadlineReminder>> = _reminderTemplates
 
@@ -63,16 +68,18 @@ class AllTasksViewModel @Inject constructor(
         combine(_executingConflict, _editError) { conflict, editError ->
             Pair(conflict, editError)
         },
-    ) { (tasks, filterState, selectedTask), (executingConflict, editError) ->
+        _priorityColors,
+    ) { (tasks, filterState, selectedTask), (executingConflict, editError), priorityColors ->
         val filtered = TaskListing.filter(tasks, filterState.selectedStatuses, filterState.query)
         val sorted = TaskListing.sort(filtered, filterState.sortMode.shared)
-        AllTasksUiState(sorted, filterState, selectedTask, executingConflict, editError)
+        AllTasksUiState(sorted, filterState, selectedTask, executingConflict, editError, priorityColors)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AllTasksUiState())
 
     init {
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
                 _reminderTemplates.value = settings.deadlineReminderTemplates
+                _priorityColors.value = settings.priorityColors
             }
         }
     }
@@ -83,7 +90,11 @@ class AllTasksViewModel @Inject constructor(
 
     fun onStatusToggle(status: TaskStatus) {
         _filterState.update { state ->
-            val updated = if (status in state.selectedStatuses) state.selectedStatuses - status else state.selectedStatuses + status
+            val updated = if (status in state.selectedStatuses) {
+                state.selectedStatuses - status
+            } else {
+                state.selectedStatuses + status
+            }
             state.copy(selectedStatuses = updated)
         }
     }
@@ -113,7 +124,10 @@ class AllTasksViewModel @Inject constructor(
         dueAt: Instant?,
         dueKind: DueKind?,
         reminders: List<DeadlineReminder>,
+        priority: TaskPriority,
         colorHex: String?,
+        customColorHex: String?,
+        useCustomColor: Boolean,
     ) {
         viewModelScope.launch {
             if (TaskValidation.findDuplicateName(repository.getTasks(), name, excludeId = taskId) != null) {
@@ -123,6 +137,9 @@ class AllTasksViewModel @Inject constructor(
             _editError.value = null
             _selectedTask.value = null
             val currentTasks = repository.getTasks()
+            val normalizedColor = colorHex?.let { TaskColor.parse(it).getOrNull()?.hex }
+            val normalizedCustomColor = customColorHex?.let { TaskColor.parse(it).getOrNull()?.hex }
+            val shouldUseCustomColor = useCustomColor && normalizedCustomColor != null
             if (newStatus == TaskStatus.EXECUTING) {
                 val existing = ExecutionRules.currentlyExecuting(currentTasks)
                 if (existing != null && existing.id != taskId) {
@@ -134,14 +151,16 @@ class AllTasksViewModel @Inject constructor(
                             dueAt = dueAt,
                             dueKind = dueKind,
                             deadlineReminders = reminders,
-                            colorHex = colorHex,
+                            priority = priority,
+                            colorHex = normalizedColor,
+                            customColorHex = normalizedCustomColor,
+                            useCustomColor = shouldUseCustomColor,
                         ),
                     )
                     return@launch
                 }
             }
 
-            val normalizedColor = colorHex?.let { TaskColor.parse(it).getOrNull()?.hex }
             val result = repository.update { tasks ->
                 tasks.map { task ->
                     if (task.id != taskId) task else ExecutionRules.applyStatusChange(
@@ -154,8 +173,15 @@ class AllTasksViewModel @Inject constructor(
                             dueAt = dueAt,
                             dueKind = dueKind,
                             deadlineReminders = reminders,
+                            priority = priority,
                             colorHex = normalizedColor,
-                        ).copy(version = task.version, updatedAt = task.updatedAt, lastModifiedBy = task.lastModifiedBy),
+                            customColorHex = normalizedCustomColor,
+                            useCustomColor = shouldUseCustomColor,
+                        ).copy(
+                            version = task.version,
+                            updatedAt = task.updatedAt,
+                            lastModifiedBy = task.lastModifiedBy,
+                        ),
                         newStatus = newStatus,
                         clock = clock,
                         deviceId = DeviceId.PHONE,
@@ -164,7 +190,10 @@ class AllTasksViewModel @Inject constructor(
             }
             if (result.isSuccess) {
                 deadlineReminderScheduler.cancel(taskId)
-                repository.getTasks().firstOrNull { it.id == taskId }?.takeIf { it.dueAt != null }?.let(deadlineReminderScheduler::schedule)
+                repository.getTasks()
+                    .firstOrNull { it.id == taskId }
+                    ?.takeIf { it.dueAt != null }
+                    ?.let(deadlineReminderScheduler::schedule)
             }
         }
     }
@@ -201,8 +230,22 @@ class AllTasksViewModel @Inject constructor(
             repository.update { tasks ->
                 tasks.map { task ->
                     when (task.id) {
-                        conflict.existing.id -> ExecutionRules.applyStatusChange(task, existingStatus, clock, DeviceId.PHONE)
-                        conflict.incoming.id -> ExecutionRules.applyStatusChange(conflict.incoming.copy(version = task.version, updatedAt = task.updatedAt, lastModifiedBy = task.lastModifiedBy), TaskStatus.EXECUTING, clock, DeviceId.PHONE)
+                        conflict.existing.id -> ExecutionRules.applyStatusChange(
+                            task,
+                            existingStatus,
+                            clock,
+                            DeviceId.PHONE,
+                        )
+                        conflict.incoming.id -> ExecutionRules.applyStatusChange(
+                            conflict.incoming.copy(
+                                version = task.version,
+                                updatedAt = task.updatedAt,
+                                lastModifiedBy = task.lastModifiedBy,
+                            ),
+                            TaskStatus.EXECUTING,
+                            clock,
+                            DeviceId.PHONE,
+                        )
                         else -> task
                     }
                 }

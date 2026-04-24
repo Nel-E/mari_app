@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import com.mari.shared.domain.DeviceId
 import com.mari.shared.domain.FixedClock
 import com.mari.shared.domain.Task
+import com.mari.shared.domain.TaskPriority
 import com.mari.shared.domain.TaskStatus
 import org.junit.Test
 import java.time.Instant
@@ -72,8 +73,21 @@ class SchemaMigrationsTest {
     }
 
     @Test
-    fun `v2 file is returned unchanged`() {
-        val file = TaskFile(schemaVersion = 2, tasks = listOf(taskV1("t4", name = "Name")))
+    fun `v2 to v3 converts queued tasks to very high priority to do tasks`() {
+        @Suppress("DEPRECATION")
+        val file = TaskFile(
+            schemaVersion = 2,
+            tasks = listOf(taskV1("t4", name = "Name").copy(status = TaskStatus.QUEUED)),
+        )
+        val migrated = SchemaMigrations.migrate(file)
+        assertThat(migrated.schemaVersion).isEqualTo(TaskFile.CURRENT_SCHEMA_VERSION)
+        assertThat(migrated.tasks.first().status).isEqualTo(TaskStatus.TO_BE_DONE)
+        assertThat(migrated.tasks.first().priority).isEqualTo(TaskPriority.VERY_HIGH)
+    }
+
+    @Test
+    fun `current file is returned unchanged`() {
+        val file = TaskFile(schemaVersion = TaskFile.CURRENT_SCHEMA_VERSION, tasks = listOf(taskV1("t5", name = "Name")))
         val migrated = SchemaMigrations.migrate(file)
         assertThat(migrated).isSameInstanceAs(file)
     }

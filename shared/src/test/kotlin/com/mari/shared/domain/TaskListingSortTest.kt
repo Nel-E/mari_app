@@ -25,19 +25,17 @@ class TaskListingSortTest {
     )
 
     @Test
-    fun `DEFAULT sort puts EXECUTING first then QUEUED then PAUSED then TO_BE_DONE`() {
+    fun `DEFAULT sort puts EXECUTING first then PAUSED then TO_BE_DONE`() {
         val tasks = listOf(
             task("a", status = TaskStatus.TO_BE_DONE),
             task("b", status = TaskStatus.PAUSED),
             task("c", status = TaskStatus.EXECUTING),
-            task("d", status = TaskStatus.QUEUED),
         )
 
         val sorted = TaskListing.sort(tasks, TaskListing.SortMode.DEFAULT)
 
         assertThat(sorted.map { it.status }).containsExactly(
             TaskStatus.EXECUTING,
-            TaskStatus.QUEUED,
             TaskStatus.PAUSED,
             TaskStatus.TO_BE_DONE,
         ).inOrder()

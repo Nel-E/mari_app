@@ -71,9 +71,9 @@ class ExecutionRulesTest {
     }
 
     @Test
-    fun `applyStatusChange not touching EXECUTING preserves executionStartedAt`() {
+    fun `applyStatusChange between non-executing statuses preserves executionStartedAt`() {
         val t = task(status = TaskStatus.TO_BE_DONE)
-        val result = ExecutionRules.applyStatusChange(t, TaskStatus.QUEUED, clock, device)
+        val result = ExecutionRules.applyStatusChange(t, TaskStatus.PAUSED, clock, device)
         assertThat(result.executionStartedAt).isNull()
     }
 

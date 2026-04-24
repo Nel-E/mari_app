@@ -22,6 +22,5 @@ val MariGreyContainer = Color(0xFFE8E0F0)
 val ColorStatusToBeDone = MariPurple
 val ColorStatusPaused = MariOrange
 val ColorStatusExecuting = MariGreen
-val ColorStatusQueued = Color(0xFF006874)
 val ColorStatusCompleted = MariGrey
 val ColorStatusDiscarded = MariRed

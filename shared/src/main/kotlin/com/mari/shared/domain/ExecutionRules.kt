@@ -41,7 +41,10 @@ object ExecutionRules {
         dueAt: java.time.Instant? = task.dueAt,
         dueKind: DueKind? = task.dueKind,
         deadlineReminders: List<DeadlineReminder> = task.deadlineReminders,
+        priority: TaskPriority = task.priority,
         colorHex: String? = task.colorHex,
+        customColorHex: String? = task.customColorHex,
+        useCustomColor: Boolean = task.useCustomColor,
     ): Task = touchTask(
         task.copy(
             name = name,
@@ -49,7 +52,10 @@ object ExecutionRules {
             dueAt = dueAt,
             dueKind = dueKind,
             deadlineReminders = deadlineReminders,
+            priority = priority,
             colorHex = colorHex,
+            customColorHex = customColorHex,
+            useCustomColor = useCustomColor,
         ),
         clock,
         deviceId,
@@ -63,7 +69,10 @@ object ExecutionRules {
         dueAt: java.time.Instant? = null,
         dueKind: DueKind? = null,
         deadlineReminders: List<DeadlineReminder> = emptyList(),
+        priority: TaskPriority = TaskPriority.NORMAL,
         colorHex: String? = null,
+        customColorHex: String? = null,
+        useCustomColor: Boolean = false,
         id: String = UUID.randomUUID().toString(),
     ): Task {
         val now = clock.nowUtc()
@@ -77,7 +86,10 @@ object ExecutionRules {
             dueAt = dueAt,
             dueKind = dueKind,
             deadlineReminders = deadlineReminders,
+            priority = priority,
             colorHex = colorHex,
+            customColorHex = customColorHex,
+            useCustomColor = useCustomColor,
             lastModifiedBy = deviceId,
         )
     }

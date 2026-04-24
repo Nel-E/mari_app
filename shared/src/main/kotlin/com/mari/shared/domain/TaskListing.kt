@@ -50,10 +50,10 @@ object TaskListing {
 
     private fun defaultGroupOrder(status: TaskStatus): Int = when (status) {
         TaskStatus.EXECUTING -> 0
-        TaskStatus.QUEUED -> 1
-        TaskStatus.PAUSED -> 2
-        TaskStatus.TO_BE_DONE -> 3
+        TaskStatus.PAUSED -> 1
+        TaskStatus.TO_BE_DONE -> 2
         TaskStatus.COMPLETED -> 4
         TaskStatus.DISCARDED -> 5
+        else -> 2
     }
 }

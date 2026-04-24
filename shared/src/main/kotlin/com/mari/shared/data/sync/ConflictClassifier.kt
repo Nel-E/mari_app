@@ -44,7 +44,10 @@ object ConflictClassifier {
             local.dueAt == incoming.dueAt &&
             local.dueKind == incoming.dueKind &&
             local.deadlineReminders == incoming.deadlineReminders &&
-            local.colorHex == incoming.colorHex
+            local.priority == incoming.priority &&
+            local.colorHex == incoming.colorHex &&
+            local.customColorHex == incoming.customColorHex &&
+            local.useCustomColor == incoming.useCustomColor
         ) {
             return if (incoming.updatedAt >= local.updatedAt) {
                 ConflictDecision.ADOPT_INCOMING

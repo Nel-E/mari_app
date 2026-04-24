@@ -99,9 +99,33 @@ fun AllTasksScreen(
             task = task,
             sheetState = sheetState,
             reminderTemplates = reminderTemplates,
+            priorityColors = uiState.priorityColors,
             editError = uiState.editError,
-            onSave = { name, desc, status, dueAt, dueKind, reminders, colorHex ->
-                viewModel.onSaveEdit(task.id, name, desc, status, dueAt, dueKind, reminders, colorHex)
+            onSave = {
+                    name,
+                    desc,
+                    status,
+                    dueAt,
+                    dueKind,
+                    reminders,
+                    priority,
+                    colorHex,
+                    customColorHex,
+                    useCustomColor,
+                ->
+                viewModel.onSaveEdit(
+                    task.id,
+                    name,
+                    desc,
+                    status,
+                    dueAt,
+                    dueKind,
+                    reminders,
+                    priority,
+                    colorHex,
+                    customColorHex,
+                    useCustomColor,
+                )
             },
             onDelete = { viewModel.onPermanentDeleteTask(task) },
             onDismiss = viewModel::onDismissEdit,

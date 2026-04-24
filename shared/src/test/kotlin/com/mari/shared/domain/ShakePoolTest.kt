@@ -12,10 +12,12 @@ class ShakePoolTest {
         id: String,
         status: TaskStatus,
         deletedAt: Instant? = null,
+        priority: TaskPriority = TaskPriority.NORMAL,
     ) = Task(
         id = id,
         description = "Task $id",
         status = status,
+        priority = priority,
         createdAt = now,
         updatedAt = now,
         deletedAt = deletedAt,
@@ -28,19 +30,31 @@ class ShakePoolTest {
     }
 
     @Test
-    fun `returns only queued tasks when any exist`() {
+    fun `returns only very high priority tasks when any exist`() {
         val tasks = listOf(
             task("1", TaskStatus.TO_BE_DONE),
-            task("2", TaskStatus.QUEUED),
+            task("2", TaskStatus.TO_BE_DONE, priority = TaskPriority.VERY_HIGH),
             task("3", TaskStatus.PAUSED),
-            task("4", TaskStatus.QUEUED),
+            task("4", TaskStatus.PAUSED, priority = TaskPriority.VERY_HIGH),
         )
         val result = ShakePool.selectCandidates(tasks)
         assertThat(result.map { it.id }).containsExactly("2", "4")
     }
 
     @Test
-    fun `returns TO_BE_DONE and PAUSED when no queued tasks`() {
+    fun `returns high priority tasks when no very high priority tasks exist`() {
+        val tasks = listOf(
+            task("1", TaskStatus.TO_BE_DONE),
+            task("2", TaskStatus.PAUSED, priority = TaskPriority.HIGH),
+            task("3", TaskStatus.TO_BE_DONE, priority = TaskPriority.LOW),
+            task("4", TaskStatus.PAUSED, priority = TaskPriority.HIGH),
+        )
+        val result = ShakePool.selectCandidates(tasks)
+        assertThat(result.map { it.id }).containsExactly("2", "4")
+    }
+
+    @Test
+    fun `returns TO_BE_DONE and PAUSED when no high priority tasks`() {
         val tasks = listOf(
             task("1", TaskStatus.TO_BE_DONE),
             task("2", TaskStatus.PAUSED),

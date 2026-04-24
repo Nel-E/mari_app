@@ -4,15 +4,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -37,6 +41,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -44,6 +50,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mari.app.BuildConfig
+import com.mari.app.ui.common.ColorUtils
+import com.mari.app.ui.common.colourpicker.ColourPickerDialog
+import com.mari.shared.domain.TaskPriority
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -102,6 +111,12 @@ fun SettingsScreen(
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            SectionTitle("Task Priority Colors")
+            PriorityColorsSection(
+                colors = uiState.priorityColors,
+                onColorChange = viewModel::onPriorityColorChange,
+            )
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider()
             SectionTitle("Storage")
@@ -169,7 +184,9 @@ fun SettingsScreen(
             SectionTitle("Deadline Reminder Templates")
             uiState.deadlineReminderTemplates.forEachIndexed { index, template ->
                 ListItem(
-                    headlineContent = { Text(template.label?.ifBlank { "Template ${index + 1}" } ?: "Template ${index + 1}") },
+                    headlineContent = {
+                        Text(template.label?.ifBlank { "Template ${index + 1}" } ?: "Template ${index + 1}")
+                    },
                     supportingContent = { Text("${template.offsetSeconds / 60} min from due time") },
                     trailingContent = {
                         Row {
@@ -244,6 +261,49 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun PriorityColorsSection(
+    colors: Map<TaskPriority, String?>,
+    onColorChange: (TaskPriority, String?) -> Unit,
+) {
+    var editingPriority by remember { mutableStateOf<TaskPriority?>(null) }
+
+    TaskPriority.entries.forEach { priority ->
+        val colorHex = colors[priority]
+        ListItem(
+            headlineContent = { Text(priority.label()) },
+            supportingContent = { Text(colorHex ?: "No color") },
+            leadingContent = {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(ColorUtils.parseHexOrFallback(colorHex, Color.Transparent)),
+                )
+            },
+            trailingContent = {
+                Row {
+                    TextButton(onClick = { editingPriority = priority }) { Text("Pick") }
+                    TextButton(onClick = { onColorChange(priority, null) }) { Text("Reset") }
+                }
+            },
+        )
+    }
+
+    editingPriority?.let { priority ->
+        ColourPickerDialog(
+            initialColorHex = colors[priority] ?: "#5C6BC0",
+            title = "${priority.label()} color",
+            showAlphaField = false,
+            onDismiss = { editingPriority = null },
+            onConfirm = { colorHex ->
+                onColorChange(priority, colorHex)
+                editingPriority = null
+            },
+        )
+    }
+}
+
+@Composable
 private fun SectionTitle(text: String) {
     Text(
         text = text,
@@ -251,6 +311,13 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
+}
+
+private fun TaskPriority.label(): String = when (this) {
+    TaskPriority.LOW -> "Low"
+    TaskPriority.NORMAL -> "Normal"
+    TaskPriority.HIGH -> "High"
+    TaskPriority.VERY_HIGH -> "Very high"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

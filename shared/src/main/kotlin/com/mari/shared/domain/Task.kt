@@ -21,7 +21,10 @@ data class Task(
     val dueAt: Instant? = null,
     val dueKind: DueKind? = null,
     val deadlineReminders: List<DeadlineReminder> = emptyList(),
+    val priority: TaskPriority = TaskPriority.NORMAL,
     val colorHex: String? = null,
+    val customColorHex: String? = null,
+    val useCustomColor: Boolean = false,
     val version: Int = 1,
     val lastModifiedBy: DeviceId,
 )

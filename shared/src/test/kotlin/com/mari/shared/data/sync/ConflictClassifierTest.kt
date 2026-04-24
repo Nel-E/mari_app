@@ -48,7 +48,7 @@ class ConflictClassifierTest {
     @Test
     fun `different statuses become conflict`() {
         val local = task(version = 3, status = TaskStatus.PAUSED)
-        val remote = task(version = 4, status = TaskStatus.QUEUED)
+        val remote = task(version = 4, status = TaskStatus.TO_BE_DONE)
         assertThat(ConflictClassifier.classify(local, remote, 2)).isEqualTo(ConflictDecision.CONFLICT)
     }
 
