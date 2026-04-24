@@ -1,7 +1,7 @@
 package com.mari.app.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,32 +31,38 @@ fun TaskRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
                 .semantics { contentDescription = "Task ${task.name}" }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val colorHex = task.colorHex
             if (!colorHex.isNullOrBlank()) {
                 Box(
                     modifier = Modifier
-                        .width(4.dp)
-                        .height(48.dp)
-                        .background(parseColor(colorHex)),
+                        .width(6.dp)
+                        .height(52.dp)
+                        .background(parseColor(colorHex), shape = RoundedCornerShape(999.dp)),
                 )
                 Spacer(modifier = Modifier.width(12.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = task.name,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 if (task.description.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = task.description,
                         style = MaterialTheme.typography.bodyMedium,
@@ -62,6 +70,7 @@ fun TaskRow(
                     )
                 }
                 task.dueAt?.let { dueAt ->
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = formatDueText(dueAt),
                         style = MaterialTheme.typography.labelMedium,
@@ -72,10 +81,6 @@ fun TaskRow(
             Spacer(modifier = Modifier.width(8.dp))
             StatusChip(status = task.status)
         }
-        HorizontalDivider(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            color = MaterialTheme.colorScheme.outlineVariant,
-        )
     }
 }
 

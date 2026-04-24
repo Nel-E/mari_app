@@ -6,16 +6,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -64,60 +66,73 @@ fun MainScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            when (val cta = uiState.ctaState) {
-                is MainCtaState.AddTaskOnly -> {
-                    Text(
-                        text = "No tasks yet",
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = onNavigateToAdd) {
-                        Text("Add your first task")
-                    }
-                }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    when (val cta = uiState.ctaState) {
+                        is MainCtaState.AddTaskOnly -> {
+                            Text(
+                                text = "No tasks yet",
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = onNavigateToAdd) {
+                                Text("Add your first task")
+                            }
+                        }
 
-                is MainCtaState.MarkExecutingComplete -> {
-                    Text(
-                        text = "Executing",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = cta.task.name,
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(onClick = viewModel::completeExecutingTask) {
-                        Text("Mark Complete")
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(onClick = viewModel::openExecutingSheet) {
-                        Text("Manage Task")
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(onClick = onNavigateToTasks) {
-                        Text("View All Tasks")
-                    }
-                }
+                        is MainCtaState.MarkExecutingComplete -> {
+                            Text(
+                                text = "Executing",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = cta.task.name,
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(onClick = viewModel::completeExecutingTask) {
+                                Text("Mark Complete")
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(onClick = viewModel::openExecutingSheet) {
+                                Text("Manage Task")
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(onClick = onNavigateToTasks) {
+                                Text("View All Tasks")
+                            }
+                        }
 
-                is MainCtaState.ShakeToPick -> {
-                    Text(
-                        text = "Shake to Pick",
-                        style = MaterialTheme.typography.headlineMedium,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Shake your phone to randomly select a task",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    OutlinedButton(onClick = onNavigateToTasks) {
-                        Text("View All Tasks")
+                        is MainCtaState.ShakeToPick -> {
+                            Text(
+                                text = "Shake to Pick",
+                                style = MaterialTheme.typography.headlineMedium,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Shake your phone to randomly select a task",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            OutlinedButton(onClick = onNavigateToTasks) {
+                                Text("View All Tasks")
+                            }
+                        }
                     }
                 }
             }
