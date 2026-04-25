@@ -46,14 +46,10 @@ ssh marilinda@192.168.1.100 "cmd /c \"M:\\.android-studio\\Sdk\\build-tools\\36.
 Phone OTA builds, including beta-track publishes, must normally be release-variant APKs:
 - `applicationId`: `com.mari.app`
 - `versionCode`: greater than the currently installed app
-- APK signer: same signer as the installed app. In this project, release currently uses the debug signing config for update compatibility.
+- APK signer: debug keystore. In this project, release currently uses the debug signing config for update compatibility.
+- Release APKs must be able to reach the configured `MARI_API_BASE_URL`. The default URL is currently cleartext HTTP on the LAN (`http://192.168.1.10:8000/`), so the release variant must include a main-manifest network security config that permits cleartext traffic to `192.168.1.10`. Do not rely on `app/src/debug/AndroidManifest.xml`; debug-only network config is not packaged into release APKs.
 
-Do not publish `app-debug.apk` to the in-app update feed for normal phone updates. It uses:
-- `applicationId`: `com.mari.app.debug`
-- `versionName`: ends with `-debug`
-- a separate package identity from the installed `com.mari.app`
-
-Publishing `com.mari.app.debug` to the phone OTA feed can fail with Android's "package conflicts with an existing package" install error because it is not an update to `com.mari.app`.
+Do not publish `app-debug.apk` to the in-app update feed for normal phone updates. It uses a separate package identity and cannot update the installed app.
 
 Do not publish if the package name, versionCode, versionName, component, or signing certificate is unexpected.
 
@@ -77,12 +73,12 @@ File naming convention:
 - Watch beta debug: `mari-watch-<version>-beta-debug.apk`
 - Watch stable: `mari-watch-<version>-stable.apk`
 
-For a phone beta `1.0.6` OTA build:
+For a phone beta `1.0.7` OTA build:
 
 ```bash
 mkdir -p backend_api/data/app_updates/phone/beta/releases
 cp /media/nelson/usb1-1T/driveM/temp_android/mari_app/app/build/outputs/apk/release/app-release.apk \
-  backend_api/data/app_updates/phone/beta/mari-phone-1.0.6-beta.apk
+  backend_api/data/app_updates/phone/beta/mari-phone-1.0.7-beta.apk
 ```
 
 ## 4. Write Metadata
@@ -98,15 +94,15 @@ The `latest.json` schema is:
   "component": "phone",
   "track": "beta",
   "package_name": "com.mari.app",
-  "version_code": 7,
-  "version_name": "1.0.6",
-  "file_name": "mari-phone-1.0.6-beta.apk",
+  "version_code": 8,
+  "version_name": "1.0.7",
+  "file_name": "mari-phone-1.0.7-beta.apk",
   "file_size_bytes": 11144116,
   "sha256": "sha256-of-apk",
   "released_at": "2026-04-25T00:01:38Z",
-  "notification_title": "Mari 1.0.6 beta available",
+  "notification_title": "Mari 1.0.7 beta available",
   "notification_text": "A new beta build is ready to install.",
-  "changelog": "- Publish beta debug build 1.0.6 for phone testing",
+  "changelog": "- Fix release builds reaching the local HTTP update server\n- Keep the do not disturb time range picker readable in light and dark themes",
   "min_installed_version_code": 0
 }
 ```
@@ -115,12 +111,15 @@ The release note schema is:
 
 ```json
 {
-  "version_code": 7,
-  "version_name": "1.0.6",
+  "version_code": 8,
+  "version_name": "1.0.7",
   "released_at": "2026-04-25T00:01:38Z",
-  "features": ["Publish beta build 1.0.6 for phone testing"],
-  "upgrades": ["Supersedes phone beta 1.0.5 with versionCode 7"],
-  "fixes": []
+  "features": [],
+  "upgrades": ["Supersedes phone beta 1.0.6 with versionCode 8"],
+  "fixes": [
+    "Fix release builds reaching the local HTTP update server by applying the LAN cleartext network security config",
+    "Keep the do not disturb time range picker readable in light and dark themes"
+  ]
 }
 ```
 
@@ -145,7 +144,7 @@ curl -fsS --max-time 3 'http://127.0.0.1:8000/api/app-update/releases?track=beta
 Check artifact download hash:
 
 ```bash
-curl -fsS --max-time 10 'http://127.0.0.1:8000/api/app-update/artifacts/beta/phone/mari-phone-1.0.6-beta.apk' | sha256sum
+curl -fsS --max-time 10 'http://127.0.0.1:8000/api/app-update/artifacts/beta/phone/mari-phone-1.0.7-beta.apk' | sha256sum
 ```
 
 The downloaded SHA-256 must exactly match `latest.json`.
