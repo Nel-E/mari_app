@@ -30,10 +30,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -95,14 +95,20 @@ fun CircularTimeRangePicker(
     var endTime by remember { mutableStateOf(initialEnd) }
     var dragging by remember { mutableStateOf<String?>(null) }
 
-    val trackColor = Color(0xFF1E1E2E)
-    val arcStart = Color(0xFF4F8EF7)
-    val arcEnd = Color(0xFFA78BFA)
+    val colorScheme = MaterialTheme.colorScheme
+    val trackColor = colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    val arcStart = colorScheme.primary
+    val arcEnd = colorScheme.tertiary
     val handleBorder = Brush.linearGradient(listOf(arcStart, arcEnd))
-    val handleFill = Color(0xFF13132A)
-    val innerCircleColor = Color(0xFF0E0E1A)
-    val tickMajor = Color(0xFF3A3A5C)
-    val tickMinor = Color(0xFF252538)
+    val handleFill = colorScheme.surface
+    val innerCircleColor = colorScheme.surface
+    val innerCircleBorder = colorScheme.outline.copy(alpha = 0.35f)
+    val tickMajor = colorScheme.onSurfaceVariant.copy(alpha = 0.58f)
+    val tickMinor = colorScheme.onSurfaceVariant.copy(alpha = 0.28f)
+    val mutedText = colorScheme.onSurfaceVariant
+    val primaryText = colorScheme.onSurface
+    val dividerColor = colorScheme.outline.copy(alpha = 0.35f)
+    val chipColor = colorScheme.surfaceVariant.copy(alpha = 0.45f)
 
     Column(
         modifier = modifier
@@ -210,7 +216,7 @@ fun CircularTimeRangePicker(
 
                 drawCircle(color = innerCircleColor, radius = innerRadius, center = center)
                 drawCircle(
-                    color = Color(0xFF1A1A2E),
+                    color = innerCircleBorder,
                     radius = innerRadius,
                     center = center,
                     style = Stroke(width = 1f),
@@ -227,7 +233,7 @@ fun CircularTimeRangePicker(
 
                 val nativeCanvas = drawContext.canvas.nativeCanvas
                 val labelPaint = android.graphics.Paint().apply {
-                    color = android.graphics.Color.argb(255, 74, 74, 106)
+                    color = mutedText.copy(alpha = 0.82f).toArgb()
                     textSize = boxSize * 0.034f
                     textAlign = android.graphics.Paint.Align.CENTER
                     typeface = android.graphics.Typeface.MONOSPACE
@@ -250,13 +256,13 @@ fun CircularTimeRangePicker(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Text(text = "START", fontSize = 10.sp, letterSpacing = 2.sp, color = Color(0xFF5A5A8A), fontWeight = FontWeight.Light)
-                Text(text = startTime.format(), fontSize = 22.sp, color = Color.White, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium)
+                Text(text = "START", fontSize = 10.sp, letterSpacing = 2.sp, color = mutedText, fontWeight = FontWeight.Light)
+                Text(text = startTime.format(), fontSize = 22.sp, color = primaryText, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(4.dp))
-                Box(modifier = Modifier.width(56.dp).height(1.dp).background(Color(0xFF2A2A4A)))
+                Box(modifier = Modifier.width(56.dp).height(1.dp).background(dividerColor))
                 Spacer(Modifier.height(4.dp))
-                Text(text = "END", fontSize = 10.sp, letterSpacing = 2.sp, color = Color(0xFF5A5A8A), fontWeight = FontWeight.Light)
-                Text(text = endTime.format(), fontSize = 22.sp, color = Color.White, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium)
+                Text(text = "END", fontSize = 10.sp, letterSpacing = 2.sp, color = mutedText, fontWeight = FontWeight.Light)
+                Text(text = endTime.format(), fontSize = 22.sp, color = primaryText, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium)
             }
         }
 
@@ -265,7 +271,7 @@ fun CircularTimeRangePicker(
         Text(
             text = "Duration: ${durationLabel(startTime, endTime)}",
             fontSize = 14.sp,
-            color = Color(0xFF7EB8FF),
+            color = colorScheme.primary,
             fontFamily = FontFamily.Monospace,
             textAlign = TextAlign.Center,
         )
@@ -274,21 +280,21 @@ fun CircularTimeRangePicker(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             listOf(
-                Triple("Start", startTime, Color(0xFF4F8EF7)),
-                Triple("End", endTime, Color(0xFFA78BFA)),
+                Triple("Start", startTime, arcStart),
+                Triple("End", endTime, arcEnd),
             ).forEach { (label, time, color) ->
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF13132A),
+                    color = chipColor,
                     border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f)),
                 ) {
                     Column(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(text = label.uppercase(), fontSize = 9.sp, letterSpacing = 2.sp, color = Color(0xFF5A5A8A))
+                        Text(text = label.uppercase(), fontSize = 9.sp, letterSpacing = 2.sp, color = mutedText)
                         Spacer(Modifier.height(2.dp))
-                        Text(text = time.format(), fontSize = 15.sp, color = Color.White, fontFamily = FontFamily.Monospace)
+                        Text(text = time.format(), fontSize = 15.sp, color = primaryText, fontFamily = FontFamily.Monospace)
                     }
                 }
             }
