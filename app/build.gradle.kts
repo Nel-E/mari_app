@@ -19,8 +19,8 @@ android {
         applicationId = "com.mari.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10
-        versionName = "1.0.9"
+        versionCode = 11
+        versionName = "1.1"
         buildConfigField("long", "BUILD_TIME_MS", "${System.currentTimeMillis()}L")
 
         val mariApiBaseUrl = project.findProperty("MARI_API_BASE_URL") as String? ?: "http://192.168.1.10:8000/"
