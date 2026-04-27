@@ -22,6 +22,7 @@ import com.mari.shared.domain.TaskStatus
 @Composable
 fun StatusChip(
     status: TaskStatus,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val (label, color) = when (status) {
@@ -33,7 +34,7 @@ fun StatusChip(
         else -> "To Do" to ColorStatusToBeDone
     }
     AssistChip(
-        onClick = {},
+        onClick = onClick,
         label = { Text(text = label) },
         modifier = modifier
             .padding(end = 4.dp)
@@ -49,6 +50,7 @@ fun StatusChip(
 @Composable
 fun PriorityChip(
     priority: TaskPriority,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val (label, color) = when (priority) {
@@ -58,7 +60,7 @@ fun PriorityChip(
         TaskPriority.VERY_HIGH -> "Very high" to Color(0xFFB3261E)
     }
     AssistChip(
-        onClick = {},
+        onClick = onClick,
         label = { Text(text = label) },
         modifier = modifier
             .padding(end = 4.dp)
