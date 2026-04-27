@@ -102,7 +102,7 @@ fun AddTaskScreen(
                 minLines = 3,
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Deadline")
+            Text("Due date")
             Spacer(modifier = Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(

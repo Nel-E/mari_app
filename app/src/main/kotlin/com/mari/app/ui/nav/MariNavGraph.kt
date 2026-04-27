@@ -2,13 +2,16 @@ package com.mari.app.ui.nav
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.mari.app.ui.screens.add.AddTaskScreen
 import com.mari.app.ui.screens.main.MainScreen
 import com.mari.app.ui.screens.settings.SettingsScreen
 import com.mari.app.ui.screens.tasks.AllTasksScreen
+import com.mari.app.ui.screens.tasks.EditTaskScreen
 import com.mari.app.ui.screens.update.UpdateAvailableScreen
 
 object MariRoutes {
@@ -17,6 +20,7 @@ object MariRoutes {
     const val ADD = "add"
     const val SETTINGS = "settings"
     const val UPDATE = "update"
+    const val EDIT_TASK = "tasks/edit/{taskId}"
 }
 
 @Composable
@@ -38,6 +42,7 @@ fun MariNavGraph(
             AllTasksScreen(
                 onNavigateUp = { navController.navigateUp() },
                 onNavigateToAdd = { navController.navigate(MariRoutes.ADD) },
+                onNavigateToEdit = { taskId -> navController.navigate("tasks/edit/$taskId") },
             )
         }
         composable(MariRoutes.ADD) {
@@ -53,6 +58,14 @@ fun MariNavGraph(
         }
         composable(MariRoutes.UPDATE) {
             UpdateAvailableScreen(
+                onNavigateUp = { navController.navigateUp() },
+            )
+        }
+        composable(
+            route = MariRoutes.EDIT_TASK,
+            arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
+        ) {
+            EditTaskScreen(
                 onNavigateUp = { navController.navigateUp() },
             )
         }

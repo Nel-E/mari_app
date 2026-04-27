@@ -16,6 +16,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +30,8 @@ import java.time.Instant
 fun TaskRow(
     task: Task,
     onClick: () -> Unit,
+    onPriorityClick: (Task) -> Unit = {},
+    onStatusClick: (Task) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -70,23 +73,36 @@ fun TaskRow(
                     )
                 }
                 task.dueAt?.let { dueAt ->
+                    val now = remember { Instant.now() }
+                    val isOverdue = dueAt.isBefore(now)
                     Spacer(modifier = Modifier.height(4.dp))
+                    // Always show the due date line
                     Text(
-                        text = formatDueText(dueAt),
+                        text = if (isOverdue) formatAbsoluteDueDate(dueAt) else formatDueInText(dueAt, now),
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (dueAt.isBefore(Instant.now())) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
+                        color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     )
+                    // If overdue, show the elapsed overdue duration on a second line
+                    if (isOverdue) {
+                        Text(
+                            text = formatOverdueText(dueAt, now),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
-                PriorityChip(priority = task.priority)
+                PriorityChip(
+                    priority = task.priority,
+                    onClick = { onPriorityClick(task) },
+                )
                 Spacer(modifier = Modifier.height(4.dp))
-                StatusChip(status = task.status)
+                StatusChip(
+                    status = task.status,
+                    onClick = { onStatusClick(task) },
+                )
             }
         }
     }
