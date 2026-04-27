@@ -47,7 +47,7 @@ data class SettingsUiState(
     val dailyNudgeHour: Int = 9,
     val dailyNudgeMinute: Int = 0,
     val updateAutoCheckEnabled: Boolean = true,
-    val updateTrack: UpdateTrack = UpdateTrack.STABLE,
+    val updateTrack: UpdateTrack = UpdateTrack.RELEASE,
     val availableUpdate: AppUpdateInfo? = null,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val priorityColors: Map<TaskPriority, String?> = com.mari.app.settings.PhoneSettings.DEFAULT_PRIORITY_COLORS,

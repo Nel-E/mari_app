@@ -9,7 +9,7 @@ A small, portable FastAPI service that publishes phone and watch APK updates fro
 
 ## Rationale
 
-User decision: one channel, two branches (`beta`, `release`), one backend, phone toggle "Receive beta builds". The API follows the contract proven by `bfi_dev/bfi_prod`.
+User decision: one channel, two branches (`beta`, `release`), one backend, phone toggle "Receive debug builds". The API follows the contract proven by `bfi_dev/bfi_prod`.
 
 ## Host & Paths
 
@@ -36,7 +36,7 @@ Minimal shared-secret. All endpoints require header `X-Mari-Token: <token>`. Tok
 ```json
 {
   "component": "phone",
-  "track": "beta",
+  "track": "debug",
   "package_name": "com.mari.app",
   "version_code": 101400,
   "version_name": "1.0.1.4-beta",
@@ -44,7 +44,7 @@ Minimal shared-secret. All endpoints require header `X-Mari-Token: <token>`. Tok
   "file_size_bytes": 32564411,
   "sha256": "bd6508580b5d5bd38bf2f3f44564a8579739782e8b253626a211bc67a410cc5b",
   "released_at": "2026-04-22T14:00:00Z",
-  "notification_title": "Mari 1.0.1.4-beta available",
+  "notification_title": "Mari 1.0.1.4-debug available",
   "notification_text": "Deadline reminders, daily nudge.",
   "changelog": "- Deadline reminders\n- Daily nudge\n- Unique task names",
   "min_installed_version_code": 100000
@@ -60,18 +60,18 @@ Identical to `bfi_dev` structure — features / upgrades / fixes lists, sequenti
 ```
 /data/app_updates/
 ├── phone/
-│   ├── stable/
+│   ├── release/
 │   │   ├── latest.json
 │   │   ├── mari-phone-<ver>.apk
 │   │   └── releases/
 │   │       └── 0001__1.0.1.0.json
-│   └── beta/
+│   └── debug/
 │       ├── latest.json
 │       ├── mari-phone-<ver>-beta.apk
 │       └── releases/
 └── watch/
-    ├── stable/
-    └── beta/
+    ├── release/
+    └── debug/
 ```
 
 ## Service Implementation
@@ -149,7 +149,7 @@ services:
 
 ### Request validation
 
-- `track` ∈ `{stable, beta}` else `400`.
+- `track ∈ `{release, debug}` else `400`.` else `400`.
 - `component` ∈ `{phone, watch}` else `400`.
 - `file_name` — regex `^[A-Za-z0-9._-]+$`, plus confine resolved path inside the expected `<component>/<track>/` dir (path traversal guard). Deny `..`.
 - `after_version_code` — non-negative int.

@@ -26,7 +26,7 @@ class AppUpdateLocalStoreTest {
     fun setUp() = runBlocking {
         store = AppUpdateLocalStore(context, json)
         store.setAutoCheckEnabled(true)
-        store.setTrack(UpdateTrack.STABLE)
+        store.setTrack(UpdateTrack.RELEASE)
         store.setCheckInterval(6)
         store.setAvailableUpdate(null)
         store.setLastNotifiedVersionCode(null)
@@ -37,17 +37,17 @@ class AppUpdateLocalStoreTest {
     fun `default state has expected values`() = runTest {
         val state = store.state.first()
         assertThat(state.autoCheckEnabled).isTrue()
-        assertThat(state.track).isEqualTo(UpdateTrack.STABLE)
+        assertThat(state.track).isEqualTo(UpdateTrack.RELEASE)
         assertThat(state.checkIntervalHours).isEqualTo(6)
         assertThat(state.availableUpdate).isNull()
         assertThat(state.lastNotifiedVersionCode).isNull()
     }
 
     @Test
-    fun `setTrack persists BETA`() = runTest {
-        store.setTrack(UpdateTrack.BETA)
+    fun `setTrack persists DEBUG`() = runTest {
+        store.setTrack(UpdateTrack.DEBUG)
         val state = store.state.first()
-        assertThat(state.track).isEqualTo(UpdateTrack.BETA)
+        assertThat(state.track).isEqualTo(UpdateTrack.DEBUG)
     }
 
     @Test
@@ -117,7 +117,7 @@ class AppUpdateLocalStoreTest {
     // ---------------------------------------------------------------------------
 
     private fun makeUpdateInfo(versionCode: Int) = AppUpdateInfo(
-        track = "stable", component = "phone", packageName = "com.mari.app",
+        track = "release", component = "phone", packageName = "com.mari.app",
         versionCode = versionCode, versionName = "1.0.$versionCode",
         fileName = "mari-$versionCode.apk", fileSizeBytes = 1_000_000L,
         sha256 = "deadbeef$versionCode",

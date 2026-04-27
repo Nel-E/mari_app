@@ -28,7 +28,7 @@ data class AppUpdateReleaseNote(
 
 data class AppUpdateLocalState(
     val autoCheckEnabled: Boolean = true,
-    val track: UpdateTrack = UpdateTrack.STABLE,
+    val track: UpdateTrack = UpdateTrack.RELEASE,
     val checkIntervalHours: Int = 6,
     val lastCheckAt: String? = null,
     val availableUpdate: AppUpdateInfo? = null,
@@ -39,6 +39,6 @@ data class AppUpdateLocalState(
 )
 
 enum class UpdateTrack(val wire: String) {
-    STABLE("stable"),
-    BETA("beta"),
+    RELEASE("release"),
+    DEBUG("debug"),
 }

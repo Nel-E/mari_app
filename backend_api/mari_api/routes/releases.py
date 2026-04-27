@@ -9,8 +9,10 @@ from mari_api.settings import Settings, get_settings
 
 router = APIRouter()
 
-Track = Literal["stable", "beta"]
+Track = Literal["release", "debug", "stable", "beta"]
 Component = Literal["phone", "watch"]
+
+_TRACK_ALIASES = {"stable": "release", "beta": "debug"}
 
 
 @router.get("/api/app-update/releases", dependencies=[Depends(require_token)])
@@ -20,6 +22,7 @@ def get_releases(
     after_version_code: int = 0,
     settings: Settings = Depends(get_settings),
 ) -> list[ReleaseNote]:
+    track = _TRACK_ALIASES.get(track, track)
     releases_dir = settings.data_dir / component / track / "releases"
     if not releases_dir.is_dir():
         return []

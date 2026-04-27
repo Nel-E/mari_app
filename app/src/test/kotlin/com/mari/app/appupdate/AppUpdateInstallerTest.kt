@@ -30,7 +30,7 @@ class AppUpdateInstallerTest {
         }
 
         val installer = AppUpdateInstaller(ctx, fakeApi)
-        val result = installer.downloadAndVerify("stable", "phone", "mari-2.apk", expectedSha)
+        val result = installer.downloadAndVerify("release", "phone", "mari-2.apk", expectedSha)
 
         assertThat(result.isSuccess).isTrue()
         assertThat(result.getOrNull()?.name).isEqualTo("mari-2.apk")
@@ -48,7 +48,7 @@ class AppUpdateInstallerTest {
         }
 
         val installer = AppUpdateInstaller(ctx, fakeApi)
-        val result = installer.downloadAndVerify("stable", "phone", "mari-2.apk", wrongSha)
+        val result = installer.downloadAndVerify("release", "phone", "mari-2.apk", wrongSha)
 
         assertThat(result.isFailure).isTrue()
         assertThat(result.exceptionOrNull()?.message).contains("SHA-256 mismatch")
@@ -67,7 +67,7 @@ class AppUpdateInstallerTest {
         }
 
         val installer = AppUpdateInstaller(ctx, fakeApi)
-        val result = installer.downloadAndVerify("stable", "phone", "missing.apk", "anyhash")
+        val result = installer.downloadAndVerify("release", "phone", "missing.apk", "anyhash")
 
         assertThat(result.isFailure).isTrue()
     }
@@ -84,7 +84,7 @@ class AppUpdateInstallerTest {
 
         val progressUpdates = mutableListOf<Long>()
         val installer = AppUpdateInstaller(ctx, fakeApi)
-        installer.downloadAndVerify("stable", "phone", "mari-progress.apk", expectedSha) { downloaded, _ ->
+        installer.downloadAndVerify("release", "phone", "mari-progress.apk", expectedSha) { downloaded, _ ->
             progressUpdates.add(downloaded)
         }
 

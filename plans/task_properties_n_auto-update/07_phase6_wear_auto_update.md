@@ -109,7 +109,7 @@ Report every state change via `WearWatchUpdateStatusReporter` using `MessageClie
 
 ## Signing Requirement
 
-`USER_ACTION_NOT_REQUIRED` **requires** the new APK to be signed with the same key as the installed watch package. Our CI/publish scripts (Phase `08_release_workflow.md`) must sign beta and stable watch APKs with the **same** keystore. First-time install on a fresh watch will require user confirmation; subsequent updates are silent.
+`USER_ACTION_NOT_REQUIRED` **requires** the new APK to be signed with the same key as the installed watch package. Our CI/publish scripts (Phase `08_release_workflow.md`) must sign debug and release watch APKs with the **same** keystore. First-time install on a fresh watch will require user confirmation; subsequent updates are silent.
 
 ## Settings UI — `WatchUpdateSection`
 
@@ -144,7 +144,7 @@ Report every state change via `WearWatchUpdateStatusReporter` using `MessageClie
   - Publish newer watch APK to `stable`.
   - Enable "Auto-update watch" on phone.
   - Trigger **Check watch now** → watch receives APK → silent install → phone shows `SUCCEEDED` with new version.
-- [ ] Repeat with beta track.
+- [ ] Repeat with debug track.
 - [ ] Disconnect watch (turn off Bluetooth) → phone surfaces "watch not reachable" without hanging.
 - [ ] Corrupt SHA in `latest.json` → watch reports `FAILED` with "checksum mismatch".
 - [ ] First-time install on a fresh watch prompts user; subsequent install is silent.

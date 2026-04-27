@@ -84,7 +84,7 @@ class AppUpdateRepositoryTest {
         advanceUntilIdle()
         assertThat(repo.state.first().availableUpdate).isNotNull()
 
-        repo.setTrack(UpdateTrack.BETA)
+        repo.setTrack(UpdateTrack.DEBUG)
         advanceUntilIdle()
 
         val state = repo.state.first()
@@ -97,7 +97,7 @@ class AppUpdateRepositoryTest {
         minInstalledVersionCode: Int? = null,
     ) = AppUpdateLatestDto(
         component = "phone",
-        track = "stable",
+        track = "release",
         packageName = "com.mari.app",
         versionCode = versionCode,
         versionName = "1.0.$versionCode",
@@ -114,7 +114,7 @@ class AppUpdateRepositoryTest {
 
 class FakeAppUpdateApiService : AppUpdateApiService {
     var latestDto: AppUpdateLatestDto = AppUpdateLatestDto(
-        component = "phone", track = "stable", packageName = "com.mari.app",
+        component = "phone", track = "release", packageName = "com.mari.app",
         versionCode = 2, versionName = "1.0.2", fileName = "mari-2.apk",
         fileSizeBytes = 1_000_000L, sha256 = "abc123",
         releasedAt = "2026-01-01T00:00:00Z",
