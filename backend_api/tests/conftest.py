@@ -54,7 +54,7 @@ def write_release(base: Path, component: str, track: str, seq: str, payload: dic
 
 SAMPLE_LATEST = {
     "component": "phone",
-    "track": "stable",
+    "track": "release",
     "package_name": "com.mari.app",
     "version_code": 100000,
     "version_name": "1.0.0.0",

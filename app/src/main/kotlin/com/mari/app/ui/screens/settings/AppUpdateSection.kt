@@ -39,12 +39,12 @@ internal fun AppUpdateSection(
     )
     ListItem(
         headlineContent = { Text("Channel") },
-        supportingContent = { Text(if (track == UpdateTrack.BETA) "Beta" else "Stable") },
+        supportingContent = { Text(if (track == UpdateTrack.DEBUG) "Debug" else "Release") },
         trailingContent = {
             TextButton(onClick = {
-                onTrackChange(if (track == UpdateTrack.STABLE) UpdateTrack.BETA else UpdateTrack.STABLE)
+                onTrackChange(if (track == UpdateTrack.RELEASE) UpdateTrack.DEBUG else UpdateTrack.RELEASE)
             }) {
-                Text(if (track == UpdateTrack.STABLE) "Switch to Beta" else "Switch to Stable")
+                Text(if (track == UpdateTrack.RELEASE) "Switch to Debug" else "Switch to Release")
             }
         },
     )

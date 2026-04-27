@@ -13,8 +13,8 @@ Comprehensive, phased plan for four features in `mari_app`:
 |---|---|
 | `Task.name` vs `description` | Add `name` (unique, required). Keep `description` as the stored optional notes field. Do **not** add a second persisted `notes` field. |
 | Backend host | Docker container on RPi. Portable `docker-compose.yml`. |
-| Channels | **One** channel (`prod`). Two git branches (`beta` + `release`) both publish to slots under the same channel. Phone has a "Receive beta builds" toggle. |
-| Versioning | `versionName` stays human-readable; published `versionCode` must be a globally monotonic 6-digit integer across **both** tracks. Beta builds use `-beta` suffix on `versionName`, but stable cuts still need a higher `versionCode` than any installable beta. |
+| Channels | **One** channel (`prod`). Two git branches (`debug` + `release`) both publish to slots under the same channel. Phone has a "Receive debug builds" toggle. |
+| Versioning | `versionName` stays human-readable; published `versionCode` must be a globally monotonic 6-digit integer across **both** tracks. Debug builds use `-debug` suffix on `versionName`, but release cuts still need a higher `versionCode` than any installable debug build. |
 | Attribution | Standard commit style, no Co-Authored-By (per global git settings). |
 
 ## Execution Order

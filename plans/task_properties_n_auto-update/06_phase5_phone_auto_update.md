@@ -44,7 +44,7 @@ User requirement: "create auto-update… see how bfi_dev implements it… must a
 
 ```kotlin
 data class AppUpdateInfo(
-    val track: String,                // "stable" | "beta"
+    val track: String,                // "release" | "debug"
     val component: String,            // "phone"
     val packageName: String,
     val versionCode: Int,
@@ -62,7 +62,7 @@ data class AppUpdateInfo(
 
 data class AppUpdateLocalState(
     val autoCheckEnabled: Boolean = true,
-    val track: UpdateTrack = UpdateTrack.STABLE,     // user toggle
+    val track: UpdateTrack = UpdateTrack.RELEASE,     // user toggle
     val checkIntervalHours: Int = 6,
     val lastCheckAt: String? = null,
     val availableUpdate: AppUpdateInfo? = null,
@@ -71,7 +71,7 @@ data class AppUpdateLocalState(
     val lastAcknowledgedVersionCode: Int? = null,
 )
 
-enum class UpdateTrack(val wire: String) { STABLE("stable"), BETA("beta") }
+enum class UpdateTrack(val wire: String) { RELEASE("release"), DEBUG("debug") }
 ```
 
 ### 2. Retrofit service
@@ -105,7 +105,7 @@ interface AppUpdateApiService {
 
 `AppUpdateRepositoryImpl` combines API + local state. Compares `response.versionCode` > `BuildConfig.VERSION_CODE`. Downgrade blocked. Respects `minInstalledVersionCode` if present. Returns a decided `AppUpdateCheckResult` (update available? should notify?).
 
-The selected track only chooses which remote feed to query. `versionCode` must still be globally monotonic across **all** published builds, so a user who installs beta can later upgrade to stable.
+The selected track only chooses which remote feed to query. `versionCode` must still be globally monotonic across **all** published builds, so a user who installs debug can later upgrade to release.
 
 ### 4. Local store
 
@@ -126,7 +126,7 @@ The selected track only chooses which remote feed to query. `versionCode` must s
 - `enqueueOnStartup()` — `OneTimeWorkRequest`, `REPLACE` policy, silent.
 - `enqueueManual()` — `OneTimeWorkRequest`, `REPLACE`, `forceNotify = true`.
 - `reenqueuePeriodic(newInterval)` — called when user changes interval.
-- `reenqueueOnTrackChange(newTrack)` — cancel + re-enqueue, clears `lastNotifiedVersionCode` so the user is re-prompted for the first beta or first stable version on the other track.
+- `reenqueueOnTrackChange(newTrack)` — cancel + re-enqueue, clears `lastNotifiedVersionCode` so the user is re-prompted for the first debug or first release version on the other track.
 
 ### 7. Installer
 
@@ -167,7 +167,7 @@ Manifest:
 ### 10. Settings UI — `AppUpdateSection`
 
 - Toggle: **Check for updates automatically**.
-- Toggle: **Receive beta builds** (switches `track` between STABLE and BETA).
+- Toggle: **Receive debug builds** (switches `track` between STABLE and BETA).
 - Interval picker: 1h / 6h / 12h / 24h (clamped to `>= 1h`).
 - Row: **Last checked** — ISO timestamp.
 - Row: **Current version** — `BuildConfig.VERSION_NAME (VERSION_CODE)`.
@@ -198,7 +198,7 @@ appUpdateScheduler.enqueueOnStartup()
 
 ### 14. Track change handling
 
-When the user toggles "Receive beta builds":
+When the user toggles "Receive debug builds":
 - `localStore` updates `track`.
 - `scheduler.reenqueueOnTrackChange(newTrack)`.
 - `availableUpdate` cleared; next check resolves the new track.
@@ -234,7 +234,7 @@ When the user toggles "Receive beta builds":
 
 - [ ] All new tests green.
 - [ ] Install current (older) release APK on device. Publish a newer stable release APK. Within one periodic cycle the phone shows a notification. Tap → download → install.
-- [ ] Toggle **Receive beta builds**. Publish a newer beta release APK. Phone offers the beta.
+- [ ] Toggle **Receive debug builds**. Publish a newer beta release APK. Phone offers the beta.
 - [ ] Start on beta, then switch back to stable and publish a newer stable build with a higher global `versionCode`. Phone offers the stable build.
 - [ ] Turn off auto-check. Publish newer APK. No notification. Tap **Check now** → notified immediately.
 - [ ] Corrupt the published APK (edit a byte) and **preserve** the old SHA in `latest.json` → installer reports SHA mismatch, no install intent fired.

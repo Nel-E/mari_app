@@ -38,7 +38,7 @@ class AppUpdateLocalStore @Inject constructor(
     val state: Flow<AppUpdateLocalState> = context.appUpdateDataStore.data.map { prefs ->
         AppUpdateLocalState(
             autoCheckEnabled = prefs[KEY_AUTO_CHECK] ?: true,
-            track = UpdateTrack.entries.find { it.wire == prefs[KEY_TRACK] } ?: UpdateTrack.STABLE,
+            track = UpdateTrack.entries.find { it.wire == prefs[KEY_TRACK] } ?: UpdateTrack.RELEASE,
             checkIntervalHours = prefs[KEY_INTERVAL] ?: 6,
             lastCheckAt = prefs[KEY_LAST_CHECK],
             availableUpdate = prefs[KEY_AVAILABLE_UPDATE]?.let {

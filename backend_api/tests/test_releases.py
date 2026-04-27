@@ -6,8 +6,8 @@ def _rel(version_code: int) -> dict:
 
 
 def test_after_zero_returns_all_releases(client, auth_headers, data_dir):
-    write_release(data_dir, "phone", "stable", "0001__1.0.0.0", _rel(100000))
-    write_release(data_dir, "phone", "stable", "0002__1.0.1.0", _rel(100100))
+    write_release(data_dir, "phone", "release", "0001__1.0.0.0", _rel(100000))
+    write_release(data_dir, "phone", "release", "0002__1.0.1.0", _rel(100100))
     r = client.get(
         "/api/app-update/releases?track=stable&component=phone&after_version_code=0",
         headers=auth_headers,
@@ -18,8 +18,8 @@ def test_after_zero_returns_all_releases(client, auth_headers, data_dir):
 
 
 def test_after_version_filters_older(client, auth_headers, data_dir):
-    write_release(data_dir, "phone", "stable", "0001__1.0.0.0", _rel(100000))
-    write_release(data_dir, "phone", "stable", "0002__1.0.1.0", _rel(100100))
+    write_release(data_dir, "phone", "release", "0001__1.0.0.0", _rel(100000))
+    write_release(data_dir, "phone", "release", "0002__1.0.1.0", _rel(100100))
     r = client.get(
         "/api/app-update/releases?track=stable&component=phone&after_version_code=100000",
         headers=auth_headers,
@@ -30,7 +30,7 @@ def test_after_version_filters_older(client, auth_headers, data_dir):
 
 
 def test_after_large_version_returns_empty(client, auth_headers, data_dir):
-    write_release(data_dir, "phone", "stable", "0001__1.0.0.0", _rel(100000))
+    write_release(data_dir, "phone", "release", "0001__1.0.0.0", _rel(100000))
     r = client.get(
         "/api/app-update/releases?track=stable&component=phone&after_version_code=999999",
         headers=auth_headers,

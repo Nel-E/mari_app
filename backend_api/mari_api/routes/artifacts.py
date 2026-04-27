@@ -9,7 +9,7 @@ from mari_api.settings import Settings, get_settings
 
 router = APIRouter()
 
-Track = Literal["stable", "beta"]
+Track = Literal["release", "debug"]
 Component = Literal["phone", "watch"]
 
 _SAFE_FILENAME = re.compile(r"^[A-Za-z0-9._-]+$")
