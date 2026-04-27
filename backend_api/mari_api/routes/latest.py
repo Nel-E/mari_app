@@ -10,8 +10,10 @@ from mari_api.settings import Settings, get_settings
 
 router = APIRouter()
 
-Track = Literal["release", "debug"]
+Track = Literal["release", "debug", "stable", "beta"]
 Component = Literal["phone", "watch"]
+
+_TRACK_ALIASES = {"stable": "release", "beta": "debug"}
 
 
 @router.get("/api/app-update/latest", dependencies=[Depends(require_token)])
@@ -20,6 +22,7 @@ def get_latest(
     component: Component,
     settings: Settings = Depends(get_settings),
 ) -> LatestRelease:
+    track = _TRACK_ALIASES.get(track, track)
     path = settings.data_dir / component / track / "latest.json"
     if not path.is_file():
         raise HTTPException(status_code=404, detail="latest.json not found")

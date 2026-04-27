@@ -9,10 +9,11 @@ from mari_api.settings import Settings, get_settings
 
 router = APIRouter()
 
-Track = Literal["release", "debug"]
+Track = Literal["release", "debug", "stable", "beta"]
 Component = Literal["phone", "watch"]
 
 _SAFE_FILENAME = re.compile(r"^[A-Za-z0-9._-]+$")
+_TRACK_ALIASES = {"stable": "release", "beta": "debug"}
 
 
 @router.get(
@@ -25,6 +26,7 @@ def get_artifact(
     file_name: str,
     settings: Settings = Depends(get_settings),
 ) -> FileResponse:
+    track = _TRACK_ALIASES.get(track, track)
     if not _SAFE_FILENAME.match(file_name):
         raise HTTPException(status_code=400, detail="Invalid file name")
 
